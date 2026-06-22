@@ -1,0 +1,97 @@
+{
+  "project": {
+    "name": "AgroFácil",
+    "description": "Plataforma SaaS de gestión para productores agropecuarios — MVP de costos, margen y punto de equilibrio por lote/cultivo/campaña",
+    "version": "0.1.0"
+  },
+  "preferences": {
+    "language": "es-AR",
+    "dateFormat": "DD/MM/YYYY",
+    "currencyFormat": "es-AR",
+    "currency": "USD",
+    "domainUnits": {
+      "superficie": "ha",
+      "rinde": "qq/ha",
+      "precioGrano": "USD/tn",
+      "costo": "USD"
+    }
+  },
+  "directories": {
+    "backend": "backend",
+    "frontend": "frontend",
+    "docs": "docs",
+    "imagenes": "imagenes"
+  },
+  "stack": {
+    "backend": {
+      "language": "typescript",
+      "runtime": "node20",
+      "framework": "nestjs",
+      "orm": "prisma",
+      "database": "postgresql",
+      "auth": "jwt-bcrypt",
+      "validation": "zod",
+      "testing": "jest"
+    },
+    "frontend": {
+      "language": "typescript",
+      "framework": "react",
+      "buildTool": "vite",
+      "styling": "tailwindcss",
+      "uiLibrary": "shadcn-ui",
+      "stateManagement": "zustand",
+      "dataFetching": "tanstack-query",
+      "forms": "react-hook-form + zod",
+      "pwa": true
+    },
+    "ai": {
+      "provider": "anthropic",
+      "model": "claude (voz/foto -> JSON estructurado)"
+    },
+    "deploy": {
+      "platform": "railway",
+      "services": ["backend", "frontend", "postgres"]
+    }
+  },
+  "codeStyle": {
+    "backend": {
+      "naming": "camelCase",
+      "fileNaming": "kebab-case",
+      "strictTypeScript": true,
+      "noAny": true,
+      "businessLanguage": "es-AR",
+      "maxLineLength": 100
+    },
+    "frontend": {
+      "naming": "camelCase",
+      "components": "PascalCase",
+      "strictTypeScript": true,
+      "noAny": true,
+      "businessLanguage": "es-AR"
+    },
+    "database": {
+      "tableNaming": "snake_case_plural",
+      "columnNaming": "snake_case",
+      "businessLanguage": "es-AR"
+    }
+  },
+  "conventions": {
+    "multiTenant": true,
+    "tenantField": "cuenta_id",
+    "softDelete": true,
+    "softDeleteField": "activo",
+    "timestamps": ["created_at", "updated_at"],
+    "moneyType": "Decimal(14,4)",
+    "surfaceType": "Decimal(12,4)",
+    "auditLogs": false,
+    "spanishNaming": true,
+    "currencyCanon": "USD"
+  },
+  "businessRules": {
+    "calcUnit": "lote_campania",
+    "aggregateRule": "sumar totales USD, recalcular por ha sobre superficie agregada — NUNCA promediar promedios",
+    "rindeResolution": "rinde_real_qq_ha ?? rinde_estimado_qq_ha",
+    "puntoEquilibrio": "costo_total_ha / precio_usd_qq",
+    "voiceFlow": "audio/foto -> Claude -> JSON -> borrador editable -> confirmación usuario -> persistencia"
+  }
+}

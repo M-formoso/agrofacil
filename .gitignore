@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+
+# Builds
+dist/
+build/
+out/
+.next/
+.vite/
+
+# Testing
+coverage/
+.nyc_output/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+Thumbs.db
+
+# Prisma
+backend/prisma/migrations/dev/
+*.db
+*.sqlite
+
+# Claude local
+.claude/settings.local.json
+.claude/cache/
+
+# Uploads (audio/foto subidos por usuarios)
+backend/uploads/
+storage/

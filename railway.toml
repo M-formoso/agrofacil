@@ -1,0 +1,10 @@
+# Railway monorepo — backend, frontend y Postgres como servicios separados.
+# Cada servicio se configura desde el dashboard apuntando a su carpeta (backend/ o frontend/)
+# con su propio railway.toml.
+
+[build]
+builder = "NIXPACKS"
+
+[deploy]
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10

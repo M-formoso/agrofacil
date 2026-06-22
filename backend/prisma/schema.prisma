@@ -1,0 +1,168 @@
+// AgroFácil — Prisma schema
+// Convención: tablas snake_case plural, columnas snake_case, multi-tenant via cuenta_id, soft delete via activo.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// Auth & tenancy
+// ============================================================
+
+model Cuenta {
+  id           String   @id @default(uuid())
+  nombre       String
+  // Datos del productor / establecimiento dueño de la cuenta
+  emailContacto String? @map("email_contacto")
+  telefono     String?
+  activo       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  usuarios         Usuario[]
+  establecimientos Establecimiento[]
+  campanias        Campania[]
+
+  @@map("cuentas")
+}
+
+model Usuario {
+  id           String    @id @default(uuid())
+  cuentaId     String    @map("cuenta_id")
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  nombre       String
+  activo       Boolean   @default(true)
+  ultimoLogin  DateTime? @map("ultimo_login")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  cuenta       Cuenta    @relation(fields: [cuentaId], references: [id])
+
+  @@index([cuentaId])
+  @@map("usuarios")
+}
+
+// ============================================================
+// Dominio agro — MVP (entidades base, sin labores/insumos todavía)
+// ============================================================
+
+enum Tenencia {
+  propio
+  arrendado
+  mixto
+}
+
+enum UnidadArrendamiento {
+  qq_ha
+  usd_ha
+  pct_produccion
+}
+
+enum TipoCampania {
+  fina
+  gruesa
+}
+
+model Establecimiento {
+  id                  String   @id @default(uuid())
+  cuentaId            String   @map("cuenta_id")
+  nombre              String
+  ubicacion           String?
+  tenencia            Tenencia @default(propio)
+  superficieTotalHa   Decimal? @map("superficie_total_ha") @db.Decimal(12, 4)
+  activo              Boolean  @default(true)
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  cuenta              Cuenta   @relation(fields: [cuentaId], references: [id])
+  lotes               Lote[]
+
+  @@index([cuentaId])
+  @@map("establecimientos")
+}
+
+model Lote {
+  id                    String                @id @default(uuid())
+  cuentaId              String                @map("cuenta_id")
+  establecimientoId     String                @map("establecimiento_id")
+  nombre                String
+  superficieHa          Decimal               @map("superficie_ha") @db.Decimal(12, 4)
+  tenencia              Tenencia?
+  arrendamientoValor    Decimal?              @map("arrendamiento_valor") @db.Decimal(14, 4)
+  arrendamientoUnidad   UnidadArrendamiento?  @map("arrendamiento_unidad")
+  activo                Boolean               @default(true)
+  createdAt             DateTime              @default(now()) @map("created_at")
+  updatedAt             DateTime              @updatedAt @map("updated_at")
+
+  establecimiento       Establecimiento       @relation(fields: [establecimientoId], references: [id])
+  lotesCampania         LoteCampania[]
+
+  @@index([cuentaId])
+  @@index([establecimientoId])
+  @@map("lotes")
+}
+
+model Campania {
+  id           String         @id @default(uuid())
+  cuentaId     String         @map("cuenta_id")
+  nombre       String
+  tipo         TipoCampania
+  fechaInicio  DateTime       @map("fecha_inicio") @db.Date
+  fechaFin     DateTime?      @map("fecha_fin") @db.Date
+  activo       Boolean        @default(true)
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+
+  cuenta       Cuenta         @relation(fields: [cuentaId], references: [id])
+  lotesCampania LoteCampania[]
+
+  @@index([cuentaId])
+  @@map("campanias")
+}
+
+model Cultivo {
+  id          String   @id @default(uuid())
+  nombre      String   @unique
+  activo      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  lotesCampania LoteCampania[]
+
+  @@map("cultivos")
+}
+
+model LoteCampania {
+  id                      String   @id @default(uuid())
+  cuentaId                String   @map("cuenta_id")
+  loteId                  String   @map("lote_id")
+  campaniaId              String   @map("campania_id")
+  cultivoId               String   @map("cultivo_id")
+  superficieSembradaHa    Decimal  @map("superficie_sembrada_ha") @db.Decimal(12, 4)
+  fechaSiembra            DateTime? @map("fecha_siembra") @db.Date
+  rindeEstimadoQqHa       Decimal? @map("rinde_estimado_qq_ha") @db.Decimal(10, 4)
+  rindeRealQqHa           Decimal? @map("rinde_real_qq_ha") @db.Decimal(10, 4)
+  precioGranoUsdTn        Decimal? @map("precio_grano_usd_tn") @db.Decimal(14, 4)
+  fechaCosecha            DateTime? @map("fecha_cosecha") @db.Date
+  activo                  Boolean  @default(true)
+  createdAt               DateTime @default(now()) @map("created_at")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+
+  lote      Lote     @relation(fields: [loteId], references: [id])
+  campania  Campania @relation(fields: [campaniaId], references: [id])
+  cultivo   Cultivo  @relation(fields: [cultivoId], references: [id])
+
+  @@index([cuentaId])
+  @@index([loteId])
+  @@index([campaniaId])
+  @@unique([loteId, campaniaId], name: "lote_campania_unico")
+  @@map("lotes_campania")
+}
+
+// Labores e insumos van en una próxima migración cuando definamos detalles con el usuario.
