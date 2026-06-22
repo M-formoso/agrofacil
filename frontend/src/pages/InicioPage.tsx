@@ -78,7 +78,7 @@ export function InicioPage() {
   });
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="flex-1 flex flex-col space-y-6 max-w-7xl w-full mx-auto">
       {/* Greeting */}
       <motion.div {...item(0)} className="flex items-center justify-between">
         <div>
@@ -88,8 +88,8 @@ export function InicioPage() {
         <Logo size={36} animated />
       </motion.div>
 
-      {/* Bento grid asimétrica */}
-      <div className="grid grid-cols-12 auto-rows-[120px] gap-4">
+      {/* Bento grid asimétrica — celdas más altas en desktop para ocupar el viewport */}
+      <div className="flex-1 grid grid-cols-12 auto-rows-[140px] sm:auto-rows-[130px] lg:auto-rows-[160px] xl:auto-rows-[180px] gap-3 sm:gap-4">
         {/* Producción esperada — celda grande */}
         <motion.div
           {...item(0.05)}

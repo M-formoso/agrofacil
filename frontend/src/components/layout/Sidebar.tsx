@@ -2,8 +2,7 @@ import { NavLink } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { LogOut } from 'lucide-react';
 import { navItems } from '@/constants/navigation';
-import { Logo, LogoLockup } from './Logo';
-void Logo;
+import { LogoLockup } from './Logo';
 import { useAuthStore } from '@/stores/authStore';
 import { cn } from '@/lib/utils';
 
@@ -13,19 +12,19 @@ export function Sidebar() {
 
   return (
     <aside className="hidden lg:flex w-64 shrink-0 h-screen sticky top-0 flex-col p-4">
-      <div className="relative flex-1 glass-green rounded-2xl shadow-glass overflow-hidden">
+      <div className="relative flex-1 flex flex-col glass-green rounded-2xl shadow-glass overflow-hidden">
         {/* Brand */}
-        <div className="px-5 pt-5 pb-4">
+        <div className="px-5 pt-5 pb-4 shrink-0">
           <LogoLockup size={30} variant="light" animated />
         </div>
 
         {/* Cuenta info */}
-        <div className="px-5 pb-4 border-b border-white/15">
+        <div className="px-5 pb-4 border-b border-white/15 shrink-0">
           <p className="text-[11px] uppercase tracking-wider text-white/60 font-medium">Cuenta</p>
           <p className="text-sm text-white font-medium truncate">{usuario?.nombre}</p>
         </div>
 
-        {/* Nav */}
+        {/* Nav — toma todo el espacio disponible */}
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
           {navItems.map((item) => (
             <NavLink
@@ -58,8 +57,8 @@ export function Sidebar() {
           ))}
         </nav>
 
-        {/* Footer */}
-        <div className="p-3 border-t border-white/15 space-y-2">
+        {/* Footer — siempre pegado abajo */}
+        <div className="p-3 border-t border-white/15 space-y-2 shrink-0">
           <div className="px-3 py-2 rounded-lg bg-white/10 flex items-center justify-between">
             <span className="text-[11px] text-white/75">Búsqueda rápida</span>
             <kbd className="text-[10px] bg-white/20 text-white px-1.5 py-0.5 rounded">⌘K</kbd>
