@@ -40,6 +40,9 @@ backend/prisma/migrations/dev/
 *.db
 *.sqlite
 
+# TypeScript build info
+*.tsbuildinfo
+
 # Claude local
 .claude/settings.local.json
 .claude/cache/

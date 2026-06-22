@@ -12,7 +12,7 @@ export function AppLayout() {
       <Sidebar />
       <div className="flex-1 min-w-0 flex flex-col">
         <Topbar />
-        <main className="flex-1 p-4 lg:p-8">
+        <main className="flex-1 p-3 sm:p-4 lg:p-8 pb-safe">
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}

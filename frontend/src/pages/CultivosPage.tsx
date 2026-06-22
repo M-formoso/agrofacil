@@ -89,7 +89,7 @@ export function CultivosPage() {
                     onClick={() => {
                       if (confirm(`¿Eliminar cultivo "${c.nombre}"?`)) eliminar.mutate(c.id);
                     }}
-                    className="ml-2 opacity-0 group-hover:opacity-100 h-6 w-6 rounded-full bg-destructive/10 text-destructive flex items-center justify-center transition"
+                    className="ml-2 lg:opacity-0 lg:group-hover:opacity-100 h-6 w-6 rounded-full bg-destructive/10 text-destructive flex items-center justify-center transition"
                     aria-label="Eliminar"
                   >
                     <Trash2 className="h-3 w-3" />

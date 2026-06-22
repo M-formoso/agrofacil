@@ -3,13 +3,14 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation } from '@tanstack/react-query';
 import { useNavigate, Navigate } from 'react-router-dom';
-import { Loader2, Sprout } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { LogoLockup } from '@/components/layout/Logo';
 import { authService } from '@/services/authService';
 import { useAuthStore } from '@/stores/authStore';
 import { extraerMensajeError } from '@/lib/apiClient';
@@ -18,7 +19,6 @@ const schema = z.object({
   email: z.string().email('Email inválido'),
   password: z.string().min(6, 'Mínimo 6 caracteres'),
 });
-
 type FormData = z.infer<typeof schema>;
 
 export function LoginPage(): JSX.Element {
@@ -48,16 +48,30 @@ export function LoginPage(): JSX.Element {
   if (isAuthenticated) return <Navigate to="/" replace />;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-accent/10 px-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-3 items-center text-center">
-          <div className="flex items-center justify-center w-14 h-14 rounded-full bg-primary text-primary-foreground">
-            <Sprout className="h-7 w-7" />
+    <div className="min-h-screen relative overflow-hidden flex items-center justify-center px-4">
+      {/* Fondo en degradé + manchas verdes desenfocadas */}
+      <div className="absolute inset-0 bg-gradient-to-br from-background via-background to-primary/5" />
+      <div
+        className="absolute -top-32 -right-32 w-[600px] h-[600px] rounded-full blur-3xl opacity-20"
+        style={{ background: 'radial-gradient(circle, #047C00 0%, transparent 70%)' }}
+      />
+      <div
+        className="absolute -bottom-40 -left-40 w-[700px] h-[700px] rounded-full blur-3xl opacity-15"
+        style={{ background: 'radial-gradient(circle, #06820B 0%, transparent 70%)' }}
+      />
+
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: 'spring', stiffness: 220, damping: 28 }}
+        className="relative w-full max-w-md"
+      >
+        <div className="glass rounded-2xl shadow-lift p-8">
+          <div className="flex flex-col items-center text-center space-y-3 mb-6">
+            <LogoLockup size={42} animated />
+            <p className="text-sm text-muted-foreground">Crecimiento medible</p>
           </div>
-          <CardTitle>AgroFácil</CardTitle>
-          <CardDescription>Ingresá a tu campaña</CardDescription>
-        </CardHeader>
-        <CardContent>
+
           <form onSubmit={handleSubmit((d) => mutation.mutate(d))} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -84,13 +98,19 @@ export function LoginPage(): JSX.Element {
               {mutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
               Ingresar
             </Button>
-            <p className="text-xs text-center text-muted-foreground pt-2">
-              Demo: <code className="bg-muted px-1 rounded">demo@agrofacil.dev</code> /{' '}
-              <code className="bg-muted px-1 rounded">agrofacil123</code>
-            </p>
           </form>
-        </CardContent>
-      </Card>
+
+          <p className="text-xs text-center text-muted-foreground mt-5 pt-5 border-t border-border">
+            Demo: <code className="bg-muted/70 px-1.5 py-0.5 rounded font-mono text-foreground">demo@agrofacil.dev</code>{' '}
+            ·{' '}
+            <code className="bg-muted/70 px-1.5 py-0.5 rounded font-mono text-foreground">agrofacil123</code>
+          </p>
+        </div>
+
+        <p className="text-center text-xs text-muted-foreground mt-4">
+          Plataforma de gestión para productores agropecuarios
+        </p>
+      </motion.div>
     </div>
   );
 }

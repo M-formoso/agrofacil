@@ -53,13 +53,15 @@ export function CampaniasPage() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      <header className="flex items-end justify-between gap-4 flex-wrap">
-        <div>
+      <header className="flex items-start sm:items-end justify-between gap-3">
+        <div className="min-w-0">
           <p className="text-sm text-muted-foreground">Cada ciclo agrícola es una campaña</p>
           <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">Campañas</h1>
         </div>
-        <Button onClick={() => setCreating(true)}>
-          <Plus className="h-4 w-4" /> Nueva campaña
+        <Button onClick={() => setCreating(true)} className="shrink-0">
+          <Plus className="h-4 w-4" />
+          <span className="hidden sm:inline">Nueva campaña</span>
+          <span className="sm:hidden">Nueva</span>
         </Button>
       </header>
 

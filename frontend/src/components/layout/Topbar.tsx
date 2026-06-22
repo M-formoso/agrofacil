@@ -1,5 +1,5 @@
 import { MobileDrawer } from './MobileDrawer';
-import { Logo } from './Logo';
+import { LogoLockup } from './Logo';
 import { Search } from 'lucide-react';
 
 interface Props {
@@ -12,10 +12,7 @@ export function Topbar({ onOpenPalette }: Props) {
       <div className="flex items-center justify-between px-4 h-14">
         <div className="flex items-center gap-2">
           <MobileDrawer />
-          <div className="flex items-center gap-2 ml-1">
-            <Logo size={22} />
-            <span className="font-bold tracking-tight">AgroFácil</span>
-          </div>
+          <LogoLockup size={22} className="ml-1" />
         </div>
         <button
           onClick={onOpenPalette}

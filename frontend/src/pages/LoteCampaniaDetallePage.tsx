@@ -105,23 +105,23 @@ export function LoteCampaniaDetallePage() {
 
       {/* Hero */}
       <header
-        className="rounded-2xl p-6 lg:p-8 text-white relative overflow-hidden shadow-glass"
+        className="rounded-2xl p-5 sm:p-6 lg:p-8 text-white relative overflow-hidden shadow-glass"
         style={{ background: `linear-gradient(135deg, ${color} 0%, ${color}DD 100%)` }}
       >
-        <div className="absolute right-4 top-4 opacity-15">
-          <Sprout className="w-44 h-44" />
+        <div className="absolute right-2 sm:right-4 top-2 sm:top-4 opacity-15 pointer-events-none">
+          <Sprout className="w-32 sm:w-44 h-32 sm:h-44" />
         </div>
         <div className="relative">
           <p className="text-[11px] uppercase tracking-widest text-white/75 font-medium">
             {lc.campania?.nombre} · {lc.lote?.establecimiento?.nombre}
           </p>
-          <h1 className="text-3xl lg:text-4xl font-bold tracking-tight text-white mt-1">{lc.lote?.nombre}</h1>
-          <p className="text-sm text-white/85 mt-1 capitalize">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-white mt-1">{lc.lote?.nombre}</h1>
+          <p className="text-xs sm:text-sm text-white/85 mt-1 capitalize">
             {lc.cultivo?.nombre} · {formatearHa(lc.superficieSembradaHa)}
             {lc.fechaSiembra && ` · sembrado el ${formatearFecha(lc.fechaSiembra)}`}
           </p>
 
-          <div className="grid grid-cols-3 gap-3 mt-5 max-w-2xl">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-5 max-w-2xl">
             <HeroStat
               label="Rinde"
               value={lc.rindeRealQqHa ? formatearQqHa(lc.rindeRealQqHa) : (lc.rindeEstimadoQqHa ? formatearQqHa(lc.rindeEstimadoQqHa) : '—')}
@@ -141,7 +141,7 @@ export function LoteCampaniaDetallePage() {
       </header>
 
       {/* Tabs */}
-      <div className="flex gap-1 p-1 rounded-xl bg-muted/60 w-fit">
+      <div className="flex gap-1 p-1 rounded-xl bg-muted/60 w-full sm:w-fit overflow-x-auto">
         {[
           { key: 'resultado' as const, label: 'Resultado', icon: TractorIcon },
           { key: 'labores' as const,    label: 'Labores',    icon: ClipboardList },
@@ -209,7 +209,7 @@ export function LoteCampaniaDetallePage() {
                   </div>
                   <button
                     onClick={() => { if (confirm('¿Eliminar labor?')) eliminarLabor.mutate(labor.id); }}
-                    className="mt-2 opacity-0 group-hover:opacity-100 text-xs text-destructive flex items-center gap-1 transition"
+                    className="mt-2 lg:opacity-0 lg:group-hover:opacity-100 text-xs text-destructive flex items-center gap-1 transition"
                   >
                     <Trash2 className="h-3 w-3" /> Eliminar
                   </button>
@@ -256,7 +256,7 @@ export function LoteCampaniaDetallePage() {
                   </div>
                   <button
                     onClick={() => { if (confirm('¿Eliminar insumo?')) eliminarInsumo.mutate(ins.id); }}
-                    className="mt-2 opacity-0 group-hover:opacity-100 text-xs text-destructive flex items-center gap-1 transition"
+                    className="mt-2 lg:opacity-0 lg:group-hover:opacity-100 text-xs text-destructive flex items-center gap-1 transition"
                   >
                     <Trash2 className="h-3 w-3" /> Eliminar
                   </button>

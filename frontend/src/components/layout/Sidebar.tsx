@@ -2,7 +2,8 @@ import { NavLink } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { LogOut } from 'lucide-react';
 import { navItems } from '@/constants/navigation';
-import { Logo } from './Logo';
+import { Logo, LogoLockup } from './Logo';
+void Logo;
 import { useAuthStore } from '@/stores/authStore';
 import { cn } from '@/lib/utils';
 
@@ -14,9 +15,8 @@ export function Sidebar() {
     <aside className="hidden lg:flex w-64 shrink-0 h-screen sticky top-0 flex-col p-4">
       <div className="relative flex-1 glass-green rounded-2xl shadow-glass overflow-hidden">
         {/* Brand */}
-        <div className="flex items-center gap-3 px-5 pt-5 pb-4">
-          <Logo variant="light" size={32} animated />
-          <span className="font-bold text-lg text-white tracking-tight">AgroFácil</span>
+        <div className="px-5 pt-5 pb-4">
+          <LogoLockup size={30} variant="light" animated />
         </div>
 
         {/* Cuenta info */}

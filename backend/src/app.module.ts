@@ -16,6 +16,7 @@ import { LotesCampaniaModule } from './modules/lotes-campania/lotes-campania.mod
 import { LaboresModule } from './modules/labores/labores.module';
 import { InsumosAplicadosModule } from './modules/insumos-aplicados/insumos-aplicados.module';
 import { CalculosModule } from './modules/calculos/calculos.module';
+import { HealthModule } from './modules/health/health.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
 @Module({
@@ -37,6 +38,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
       { name: 'long', ttl: 60_000 * 15, limit: 200 },
     ]),
     PrismaModule,
+    HealthModule,
     AuthModule,
     CultivosModule,
     EstablecimientosModule,

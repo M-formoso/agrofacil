@@ -77,28 +77,29 @@ export function CampaniaDetallePage() {
         <ArrowLeft className="h-4 w-4" /> Campañas
       </Link>
 
-      <header className="rounded-2xl bg-surface border border-border p-6 flex items-center gap-4 relative overflow-hidden">
+      <header className="rounded-2xl bg-surface border border-border p-4 sm:p-6 flex items-start sm:items-center gap-3 sm:gap-4 relative overflow-hidden">
         <div className={cn(
-          'h-14 w-14 rounded-xl flex items-center justify-center shrink-0',
+          'h-12 w-12 sm:h-14 sm:w-14 rounded-xl flex items-center justify-center shrink-0',
           campania.tipo === 'fina' ? 'bg-info/10 text-info' : 'bg-warning/10 text-warning',
         )}>
-          {campania.tipo === 'fina' ? <Snowflake className="h-7 w-7" /> : <Sun className="h-7 w-7" />}
+          {campania.tipo === 'fina' ? <Snowflake className="h-6 w-6 sm:h-7 sm:w-7" /> : <Sun className="h-6 w-6 sm:h-7 sm:w-7" />}
         </div>
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <p className={cn(
             'text-[11px] uppercase tracking-widest font-semibold',
             campania.tipo === 'fina' ? 'text-info' : 'text-warning',
           )}>
             Campaña {campania.tipo}
           </p>
-          <h1 className="text-2xl font-bold tracking-tight">{campania.nombre}</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight truncate">{campania.nombre}</h1>
+          <p className="text-xs text-muted-foreground mt-0.5 truncate">
             {formatearFecha(campania.fechaInicio)}
             {campania.fechaFin ? ` → ${formatearFecha(campania.fechaFin)}` : ' · sin fecha de cierre'}
           </p>
         </div>
-        <Button onClick={() => setCreating(true)}>
-          <Plus className="h-4 w-4" /> Asignar lote
+        <Button onClick={() => setCreating(true)} className="shrink-0">
+          <Plus className="h-4 w-4" />
+          <span className="hidden sm:inline">Asignar lote</span>
         </Button>
       </header>
 
@@ -147,7 +148,7 @@ export function CampaniaDetallePage() {
                         onClick={() => {
                           if (confirm('¿Quitar este lote de la campaña?')) eliminar.mutate(lc.id);
                         }}
-                        className="h-8 w-8 opacity-0 group-hover:opacity-100 rounded-md hover:bg-destructive/10 hover:text-destructive flex items-center justify-center transition"
+                        className="h-8 w-8 lg:opacity-0 lg:group-hover:opacity-100 rounded-md hover:bg-destructive/10 hover:text-destructive flex items-center justify-center transition"
                         aria-label="Quitar"
                       >
                         <Trash2 className="h-4 w-4" />

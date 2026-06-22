@@ -1,4 +1,5 @@
 @import url('https://rsms.me/inter/inter.css');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -62,4 +63,7 @@
   .embla { overflow: hidden; }
   .embla__container { display: flex; }
   .embla__slide { flex: 0 0 auto; min-width: 0; }
+
+  /* Padding seguro contra notch / home indicator en mobile */
+  .pb-safe { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
 }

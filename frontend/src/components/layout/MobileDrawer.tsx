@@ -3,7 +3,7 @@ import { Drawer } from 'vaul';
 import { NavLink } from 'react-router-dom';
 import { LogOut, Menu } from 'lucide-react';
 import { navItems } from '@/constants/navigation';
-import { Logo } from './Logo';
+import { LogoLockup } from './Logo';
 import { useAuthStore } from '@/stores/authStore';
 import { cn } from '@/lib/utils';
 
@@ -28,12 +28,9 @@ export function MobileDrawer() {
           <div className="mx-auto mt-2 h-1.5 w-12 rounded-full bg-muted" />
           <Drawer.Title className="sr-only">Menú de AgroFácil</Drawer.Title>
 
-          <div className="px-5 pt-4 pb-3 flex items-center gap-3">
-            <Logo size={26} />
-            <div>
-              <p className="font-bold text-foreground leading-none">AgroFácil</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{usuario?.nombre}</p>
-            </div>
+          <div className="px-5 pt-4 pb-3">
+            <LogoLockup size={24} />
+            <p className="text-xs text-muted-foreground mt-1.5">{usuario?.nombre}</p>
           </div>
 
           <nav className="px-3 pb-2 max-h-[60vh] overflow-y-auto">

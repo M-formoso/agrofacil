@@ -49,7 +49,7 @@ export function ResumenPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      <header className="flex items-end justify-between gap-4 flex-wrap">
+      <header className="space-y-3">
         <div>
           <p className="text-sm text-muted-foreground">Totales y comparativa por cultivo</p>
           <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">Resumen de campaña</h1>
@@ -57,7 +57,7 @@ export function ResumenPage() {
         <select
           value={campaniaId}
           onChange={(e) => setCampaniaId(e.target.value)}
-          className="h-10 px-3 rounded-md border border-border bg-surface text-sm"
+          className="w-full sm:w-auto h-10 px-3 rounded-md border border-border bg-surface text-sm"
         >
           {campanias.items.map((c) => (
             <option key={c.id} value={c.id}>{c.nombre} ({c.tipo})</option>
@@ -76,13 +76,13 @@ export function ResumenPage() {
       ) : (
         <>
           {/* Totales */}
-          <div className="rounded-2xl bg-foreground text-background p-6 lg:p-8">
-            <div className="flex items-center justify-between mb-4">
-              <div>
+          <div className="rounded-2xl bg-foreground text-background p-5 sm:p-6 lg:p-8">
+            <div className="flex items-start sm:items-center justify-between gap-3 mb-4">
+              <div className="min-w-0">
                 <p className="text-[11px] uppercase tracking-widest text-background/65 font-semibold">
                   Totales consolidados
                 </p>
-                <h2 className="text-lg font-bold mt-1">
+                <h2 className="text-base sm:text-lg font-bold mt-1">
                   {resumen.cantidadLotes} lote{resumen.cantidadLotes === 1 ? '' : 's'} ·{' '}
                   <span className="tabular-nums">{formatearHa(resumen.totales.superficieHa)}</span>
                 </h2>
@@ -131,20 +131,20 @@ export function ResumenPage() {
                         transition={{ delay: i * 0.07 }}
                         className="space-y-1.5"
                       >
-                        <div className="flex items-baseline justify-between text-sm">
-                          <div className="flex items-center gap-2">
+                        <div className="flex items-baseline justify-between gap-2 text-sm">
+                          <div className="flex items-center gap-2 min-w-0">
                             <span
-                              className="h-2.5 w-2.5 rounded-sm"
+                              className="h-2.5 w-2.5 rounded-sm shrink-0"
                               style={{ background: color }}
                             />
-                            <span className="capitalize font-medium text-foreground">{c.cultivoNombre}</span>
-                            <span className="text-xs text-muted-foreground">
+                            <span className="capitalize font-medium text-foreground truncate">{c.cultivoNombre}</span>
+                            <span className="text-xs text-muted-foreground hidden sm:inline shrink-0">
                               · {c.cantidadLotes} lote{c.cantidadLotes === 1 ? '' : 's'}
                               · {formatearHa(c.superficieHa)}
                             </span>
                           </div>
                           <span className={cn(
-                            'font-bold tabular-nums',
+                            'font-bold tabular-nums shrink-0',
                             positivo ? 'text-foreground' : 'text-destructive',
                           )}>
                             {formatearUsd(margen)}
