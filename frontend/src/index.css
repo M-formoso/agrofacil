@@ -1,3 +1,5 @@
+@import url('https://rsms.me/inter/inter.css');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -10,7 +12,8 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'Inter var', ui-sans-serif, system-ui, sans-serif;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
     margin: 0;
     min-height: 100vh;
   }
@@ -18,4 +21,45 @@
   *:focus-visible {
     @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
   }
+
+  /* Custom scrollbar — fino y verde */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { @apply bg-muted rounded-full; }
+  ::-webkit-scrollbar-thumb:hover { background: #C8D4C8; }
+}
+
+@layer components {
+  /* Glass surface — sidebar y modales premium */
+  .glass {
+    background: rgba(255, 255, 255, 0.72);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+  }
+
+  .glass-green {
+    background: linear-gradient(135deg, rgba(4, 124, 0, 0.92) 0%, rgba(6, 130, 11, 0.92) 100%);
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+  }
+
+  /* Texto destacado tipo display */
+  .display-number {
+    font-feature-settings: 'tnum';
+    letter-spacing: -0.02em;
+    font-weight: 700;
+  }
+
+  /* Shimmer para skeletons elegantes */
+  .shimmer {
+    background: linear-gradient(90deg, transparent, rgba(4, 124, 0, 0.06), transparent);
+    background-size: 200% 100%;
+    @apply animate-shimmer;
+  }
+
+  /* Embla carousel base */
+  .embla { overflow: hidden; }
+  .embla__container { display: flex; }
+  .embla__slide { flex: 0 0 auto; min-width: 0; }
 }
