@@ -25,8 +25,8 @@ export function CostDonut({ data, size = 180, showLegend = true, centerValue, ce
   }));
 
   return (
-    <div className="flex items-center gap-6">
-      <div style={{ width: size, height: size, position: 'relative' }}>
+    <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
+      <div className="shrink-0" style={{ width: size, height: size, position: 'relative' }}>
         <ResponsiveContainer>
           <PieChart>
             <Pie
@@ -51,7 +51,7 @@ export function CostDonut({ data, size = 180, showLegend = true, centerValue, ce
                 borderRadius: 8,
                 fontSize: 12,
               }}
-              formatter={(value: number, name: string) => [formatearUsd(value), name]}
+              formatter={(value, name) => [formatearUsd(Number(value) || 0), String(name)]}
             />
           </PieChart>
         </ResponsiveContainer>
@@ -70,7 +70,7 @@ export function CostDonut({ data, size = 180, showLegend = true, centerValue, ce
       </div>
 
       {showLegend && (
-        <ul className="flex-1 min-w-0 space-y-1.5">
+        <ul className="flex-1 min-w-0 space-y-1.5 w-full">
           {enriched.map((s) => {
             const pct = total > 0 ? ((s.valor / total) * 100).toFixed(0) : '0';
             return (

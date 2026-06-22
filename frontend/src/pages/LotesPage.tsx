@@ -38,7 +38,8 @@ const schema = z
         ctx.addIssue({ code: 'custom', message: 'Requerido', path: ['arrendamientoUnidad'] });
     }
   });
-type FormData = z.infer<typeof schema>;
+type FormInput = z.input<typeof schema>;
+type FormData = z.output<typeof schema>;
 
 const UNIDADES: { value: UnidadArrendamiento; label: string; help: string }[] = [
   { value: 'qq_ha',         label: 'qq/ha',  help: 'Quintales por hectárea' },
@@ -292,7 +293,7 @@ function LoteSheet({
   });
   const isEdit = !!editing;
 
-  const { register, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<FormInput, unknown, FormData>({
     resolver: zodResolver(schema),
     values: editing
       ? {
@@ -314,7 +315,7 @@ function LoteSheet({
   });
   const tenencia = watch('tenencia');
   const unidadArr = watch('arrendamientoUnidad');
-  const supObservada = watch('superficieHa') || 0;
+  const supObservada = Number(watch('superficieHa') ?? 0) || 0;
 
   const mutation = useMutation({
     mutationFn: (data: FormData) => isEdit ? lotesService.actualizar(editing!.id, data) : lotesService.crear(data),

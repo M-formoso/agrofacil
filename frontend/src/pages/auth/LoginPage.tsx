@@ -21,7 +21,7 @@ const schema = z.object({
 });
 type FormData = z.infer<typeof schema>;
 
-export function LoginPage(): JSX.Element {
+export function LoginPage() {
   const navigate = useNavigate();
   const setTokens = useAuthStore((s) => s.setTokens);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);

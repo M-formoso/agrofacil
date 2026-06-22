@@ -22,7 +22,8 @@ const schema = z.object({
   tenencia: z.enum(['propio', 'arrendado', 'mixto']),
   superficieTotalHa: z.coerce.number().nonnegative().optional(),
 });
-type FormData = z.infer<typeof schema>;
+type FormInput = z.input<typeof schema>;
+type FormData = z.output<typeof schema>;
 
 const TENENCIAS: { value: Tenencia; label: string; pill: string }[] = [
   { value: 'propio',    label: 'Propio',    pill: 'bg-primary/10 text-primary' },
@@ -180,7 +181,7 @@ function EstablecimientoSheet({
   const qc = useQueryClient();
   const isEdit = !!editing;
 
-  const { register, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<FormInput, unknown, FormData>({
     resolver: zodResolver(schema),
     values: editing
       ? {

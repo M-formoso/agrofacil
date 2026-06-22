@@ -396,12 +396,13 @@ const laborSchema = z.object({
   formaPago: z.enum(['contado', 'canje', 'financiado']).optional(),
   nota: z.string().optional(),
 });
-type LaborForm = z.infer<typeof laborSchema>;
+type LaborFormInput = z.input<typeof laborSchema>;
+type LaborForm = z.output<typeof laborSchema>;
 
 function LaborSheet({ open, loteCampaniaId, onClose }: { open: boolean; loteCampaniaId: string; onClose: () => void }) {
   const qc = useQueryClient();
   const today = new Date().toISOString().slice(0, 10);
-  const { register, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<LaborForm>({
+  const { register, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<LaborFormInput, unknown, LaborForm>({
     resolver: zodResolver(laborSchema),
     defaultValues: { tipo: 'pulverizacion', fecha: today, ejecutor: 'contratista' },
   });
@@ -532,13 +533,14 @@ const insumoSchema = z.object({
   costoTotalUsd: z.coerce.number().nonnegative(),
   formaPago: z.enum(['contado', 'canje', 'financiado']).optional(),
 });
-type InsumoForm = z.infer<typeof insumoSchema>;
+type InsumoFormInput = z.input<typeof insumoSchema>;
+type InsumoForm = z.output<typeof insumoSchema>;
 
 const UNIDADES_INSUMO = ['lt', 'kg', 'bolsa', 'sem/ha', 'gr/ha'];
 
 function InsumoSheet({ open, loteCampaniaId, onClose }: { open: boolean; loteCampaniaId: string; onClose: () => void }) {
   const qc = useQueryClient();
-  const { register, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<InsumoForm>({
+  const { register, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<InsumoFormInput, unknown, InsumoForm>({
     resolver: zodResolver(insumoSchema),
     defaultValues: { tipo: 'herbicida', unidad: 'lt' },
   });

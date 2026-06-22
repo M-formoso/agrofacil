@@ -30,7 +30,8 @@ const schema = z.object({
   rindeEstimadoQqHa: z.coerce.number().nonnegative().optional(),
   precioGranoUsdTn: z.coerce.number().positive().optional(),
 });
-type FormData = z.infer<typeof schema>;
+type FormInput = z.input<typeof schema>;
+type FormData = z.output<typeof schema>;
 
 const colorCultivo = (nombre: string) => {
   const map: Record<string, string> = {
@@ -232,7 +233,7 @@ function AsignarLoteSheet({
     (l) => !yaAsignados?.items.some((lc) => lc.loteId === l.id),
   );
 
-  const { register, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<FormInput, unknown, FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       loteId: '',
