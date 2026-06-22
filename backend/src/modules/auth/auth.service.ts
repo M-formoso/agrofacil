@@ -1,9 +1,10 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { UsuarioActual } from '../../common/types/usuario-actual';
+import type { ActualizarPerfilDto, RegistroDto } from './dto/login.dto';
 
 export interface TokensResponse {
   accessToken: string;
@@ -75,6 +76,70 @@ export class AuthService {
       nombre: usuario.nombre,
       cuentaId: usuario.cuentaId,
     });
+  }
+
+  async registrar(dto: RegistroDto): Promise<TokensResponse> {
+    const emailLower = dto.email.toLowerCase();
+    const existente = await this.prisma.usuario.findUnique({ where: { email: emailLower } });
+    if (existente) throw new ConflictException('Ya existe un usuario con ese email');
+
+    const passwordHash = await this.generarHash(dto.password);
+    const usuario = await this.prisma.$transaction(async (tx) => {
+      const cuenta = await tx.cuenta.create({
+        data: {
+          nombre: dto.nombreCuenta,
+          emailContacto: dto.emailContacto,
+          telefono: dto.telefono,
+        },
+      });
+      return tx.usuario.create({
+        data: {
+          cuentaId: cuenta.id,
+          email: emailLower,
+          passwordHash,
+          nombre: dto.nombre,
+        },
+      });
+    });
+
+    return this.generarTokens({
+      id: usuario.id,
+      email: usuario.email,
+      nombre: usuario.nombre,
+      cuentaId: usuario.cuentaId,
+    });
+  }
+
+  async actualizarPerfil(usuarioId: string, dto: ActualizarPerfilDto) {
+    if (dto.email) {
+      const existente = await this.prisma.usuario.findFirst({
+        where: { email: dto.email.toLowerCase(), id: { not: usuarioId } },
+      });
+      if (existente) throw new ConflictException('Ya existe un usuario con ese email');
+    }
+    const actualizado = await this.prisma.usuario.update({
+      where: { id: usuarioId },
+      data: {
+        ...(dto.nombre && { nombre: dto.nombre }),
+        ...(dto.email && { email: dto.email.toLowerCase() }),
+      },
+    });
+    return {
+      id: actualizado.id,
+      email: actualizado.email,
+      nombre: actualizado.nombre,
+      cuentaId: actualizado.cuentaId,
+    };
+  }
+
+  async cambiarPassword(usuarioId: string, passwordActual: string, passwordNueva: string): Promise<{ ok: true }> {
+    const usuario = await this.prisma.usuario.findUnique({ where: { id: usuarioId } });
+    if (!usuario) throw new BadRequestException('Usuario no encontrado');
+    const ok = await bcrypt.compare(passwordActual, usuario.passwordHash);
+    if (!ok) throw new UnauthorizedException('La contraseña actual es incorrecta');
+    const passwordHash = await this.generarHash(passwordNueva);
+    await this.prisma.usuario.update({ where: { id: usuarioId }, data: { passwordHash } });
+    return { ok: true };
   }
 
   async generarHash(password: string): Promise<string> {

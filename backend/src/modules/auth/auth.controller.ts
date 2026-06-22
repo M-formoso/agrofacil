@@ -1,6 +1,12 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Patch, Post, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { LoginDto, RefreshDto } from './dto/login.dto';
+import {
+  ActualizarPerfilDto,
+  CambiarPasswordDto,
+  LoginDto,
+  RefreshDto,
+  RegistroDto,
+} from './dto/login.dto';
 import { Public } from '../../common/decorators/public.decorator';
 import { Usuario } from '../../common/decorators/usuario.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -24,9 +30,29 @@ export class AuthController {
     return this.service.refresh(dto.refreshToken);
   }
 
+  @Public()
+  @Post('registro')
+  @HttpCode(HttpStatus.CREATED)
+  registro(@Body() dto: RegistroDto) {
+    return this.service.registrar(dto);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get('me')
   me(@Usuario() user: UsuarioActual) {
     return user;
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('me')
+  actualizarPerfil(@Usuario() user: UsuarioActual, @Body() dto: ActualizarPerfilDto) {
+    return this.service.actualizarPerfil(user.id, dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('cambiar-password')
+  @HttpCode(HttpStatus.OK)
+  cambiarPassword(@Usuario() user: UsuarioActual, @Body() dto: CambiarPasswordDto) {
+    return this.service.cambiarPassword(user.id, dto.passwordActual, dto.passwordNueva);
   }
 }

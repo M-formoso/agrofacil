@@ -154,9 +154,11 @@ model LoteCampania {
   createdAt               DateTime @default(now()) @map("created_at")
   updatedAt               DateTime @updatedAt @map("updated_at")
 
-  lote      Lote     @relation(fields: [loteId], references: [id])
-  campania  Campania @relation(fields: [campaniaId], references: [id])
-  cultivo   Cultivo  @relation(fields: [cultivoId], references: [id])
+  lote              Lote             @relation(fields: [loteId], references: [id])
+  campania          Campania         @relation(fields: [campaniaId], references: [id])
+  cultivo           Cultivo          @relation(fields: [cultivoId], references: [id])
+  labores           Labor[]
+  insumosAplicados  InsumoAplicado[]
 
   @@index([cuentaId])
   @@index([loteId])
@@ -165,4 +167,76 @@ model LoteCampania {
   @@map("lotes_campania")
 }
 
-// Labores e insumos van en una próxima migración cuando definamos detalles con el usuario.
+// ============================================================
+// Labores e insumos
+// ============================================================
+
+enum TipoLabor {
+  siembra
+  pulverizacion
+  fertilizacion
+  cosecha
+  otra
+}
+
+enum Ejecutor {
+  propio
+  contratista
+}
+
+enum FormaPago {
+  contado
+  canje
+  financiado
+}
+
+enum TipoInsumo {
+  semilla
+  fertilizante
+  herbicida
+  insecticida
+  fungicida
+  otro
+}
+
+model Labor {
+  id              String     @id @default(uuid())
+  cuentaId        String     @map("cuenta_id")
+  loteCampaniaId  String     @map("lote_campania_id")
+  tipo            TipoLabor
+  fecha           DateTime   @db.Date
+  ejecutor        Ejecutor   @default(contratista)
+  costoTotalUsd   Decimal?   @map("costo_total_usd") @db.Decimal(14, 4)
+  formaPago       FormaPago? @map("forma_pago")
+  nota            String?
+  activo          Boolean    @default(true)
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+
+  loteCampania    LoteCampania @relation(fields: [loteCampaniaId], references: [id])
+
+  @@index([cuentaId])
+  @@index([loteCampaniaId])
+  @@map("labores")
+}
+
+model InsumoAplicado {
+  id              String     @id @default(uuid())
+  cuentaId        String     @map("cuenta_id")
+  loteCampaniaId  String     @map("lote_campania_id")
+  tipo            TipoInsumo
+  producto        String
+  cantidad        Decimal    @db.Decimal(12, 4)
+  unidad          String      // 'lt' | 'kg' | 'bolsa' | 'sem/ha' — string libre por flexibilidad
+  costoTotalUsd   Decimal    @map("costo_total_usd") @db.Decimal(14, 4)
+  formaPago       FormaPago? @map("forma_pago")
+  activo          Boolean    @default(true)
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+
+  loteCampania    LoteCampania @relation(fields: [loteCampaniaId], references: [id])
+
+  @@index([cuentaId])
+  @@index([loteCampaniaId])
+  @@map("insumos_aplicados")
+}

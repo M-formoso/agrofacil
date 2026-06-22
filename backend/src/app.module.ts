@@ -8,6 +8,14 @@ import { ZodValidationPipe } from 'nestjs-zod';
 import configuration from './config/configuration';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { CultivosModule } from './modules/cultivos/cultivos.module';
+import { EstablecimientosModule } from './modules/establecimientos/establecimientos.module';
+import { LotesModule } from './modules/lotes/lotes.module';
+import { CampaniasModule } from './modules/campanias/campanias.module';
+import { LotesCampaniaModule } from './modules/lotes-campania/lotes-campania.module';
+import { LaboresModule } from './modules/labores/labores.module';
+import { InsumosAplicadosModule } from './modules/insumos-aplicados/insumos-aplicados.module';
+import { CalculosModule } from './modules/calculos/calculos.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
 @Module({
@@ -30,6 +38,14 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     ]),
     PrismaModule,
     AuthModule,
+    CultivosModule,
+    EstablecimientosModule,
+    LotesModule,
+    CampaniasModule,
+    LotesCampaniaModule,
+    LaboresModule,
+    InsumosAplicadosModule,
+    CalculosModule,
   ],
   providers: [
     { provide: APP_PIPE, useClass: ZodValidationPipe },
