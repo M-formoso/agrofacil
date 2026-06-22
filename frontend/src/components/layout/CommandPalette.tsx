@@ -1,14 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Command } from 'cmdk';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { LogOut, Search } from 'lucide-react';
 import { navItems } from '@/constants/navigation';
 import { useAuthStore } from '@/stores/authStore';
+import { useCommandPalette } from '@/stores/commandPaletteStore';
 import { cn } from '@/lib/utils';
 
 export function CommandPalette() {
-  const [open, setOpen] = useState(false);
+  const open = useCommandPalette((s) => s.open);
+  const setOpen = useCommandPalette((s) => s.setOpen);
+  const toggle = useCommandPalette((s) => s.toggle);
   const navigate = useNavigate();
   const logout = useAuthStore((s) => s.logout);
 
@@ -16,12 +19,12 @@ export function CommandPalette() {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
-        setOpen((o) => !o);
+        toggle();
       }
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, []);
+  }, [toggle]);
 
   const run = (fn: () => void) => {
     setOpen(false);
@@ -50,6 +53,7 @@ export function CommandPalette() {
               <div className="flex items-center gap-3 px-4 border-b border-border/60">
                 <Search className="h-4 w-4 text-muted-foreground" />
                 <Command.Input
+                  autoFocus
                   placeholder="Buscar módulo, acción…"
                   className="flex-1 h-12 bg-transparent outline-none text-sm placeholder:text-muted-foreground"
                 />

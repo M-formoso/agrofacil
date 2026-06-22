@@ -1,14 +1,16 @@
 import { NavLink } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { LogOut } from 'lucide-react';
+import { LogOut, Search } from 'lucide-react';
 import { navItems } from '@/constants/navigation';
 import { LogoLockup } from './Logo';
 import { useAuthStore } from '@/stores/authStore';
+import { useCommandPalette } from '@/stores/commandPaletteStore';
 import { cn } from '@/lib/utils';
 
 export function Sidebar() {
   const usuario = useAuthStore((s) => s.usuario);
   const logout = useAuthStore((s) => s.logout);
+  const openPalette = useCommandPalette((s) => s.setOpen);
 
   return (
     <aside className="hidden lg:flex w-64 shrink-0 h-screen sticky top-0 flex-col p-4">
@@ -45,7 +47,7 @@ export function Sidebar() {
                   {isActive && (
                     <motion.div
                       layoutId="sidebar-active"
-                      className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-white rounded-r-full"
+                      className="absolute left-0 inset-y-1.5 w-1 bg-white rounded-r-full"
                       transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                     />
                   )}
@@ -59,10 +61,17 @@ export function Sidebar() {
 
         {/* Footer — siempre pegado abajo */}
         <div className="p-3 border-t border-white/15 space-y-2 shrink-0">
-          <div className="px-3 py-2 rounded-lg bg-white/10 flex items-center justify-between">
-            <span className="text-[11px] text-white/75">Búsqueda rápida</span>
+          <button
+            type="button"
+            onClick={() => openPalette(true)}
+            className="w-full px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 flex items-center justify-between text-left transition"
+          >
+            <span className="flex items-center gap-2 text-[11px] text-white/85">
+              <Search className="h-3.5 w-3.5" />
+              Búsqueda rápida
+            </span>
             <kbd className="text-[10px] bg-white/20 text-white px-1.5 py-0.5 rounded">⌘K</kbd>
-          </div>
+          </button>
           <button
             onClick={logout}
             className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-white/75 hover:bg-white/10 hover:text-white transition"
