@@ -19,6 +19,7 @@ import { InsumosAplicadosModule } from './modules/insumos-aplicados/insumos-apli
 import { CalculosModule } from './modules/calculos/calculos.module';
 import { LluviasModule } from './modules/lluvias/lluvias.module';
 import { ClimaModule } from './modules/clima/clima.module';
+import { AsistenteModule } from './modules/asistente/asistente.module';
 import { HealthModule } from './modules/health/health.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
@@ -54,6 +55,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     CalculosModule,
     LluviasModule,
     ClimaModule,
+    AsistenteModule,
   ],
   providers: [
     { provide: APP_PIPE, useClass: ZodValidationPipe },

@@ -43,9 +43,51 @@ model Usuario {
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
   cuenta       Cuenta    @relation(fields: [cuentaId], references: [id])
+  conversaciones Conversacion[]
 
   @@index([cuentaId])
   @@map("usuarios")
+}
+
+// ============================================================
+// Asistente IA — Conversaciones con Claude
+// ============================================================
+
+enum RolMensaje {
+  user
+  assistant
+  system
+}
+
+model Conversacion {
+  id         String   @id @default(uuid())
+  cuentaId   String   @map("cuenta_id")
+  usuarioId  String   @map("usuario_id")
+  titulo     String?
+  activo     Boolean  @default(true)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  usuario    Usuario   @relation(fields: [usuarioId], references: [id])
+  mensajes   Mensaje[]
+
+  @@index([cuentaId, usuarioId])
+  @@map("conversaciones")
+}
+
+model Mensaje {
+  id             String       @id @default(uuid())
+  conversacionId String       @map("conversacion_id")
+  rol            RolMensaje
+  contenido      String       @db.Text
+  /// Metadatos opcionales: tokensUsados, modelo, latenciaMs, error, etc.
+  metadata       Json?
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  conversacion   Conversacion @relation(fields: [conversacionId], references: [id], onDelete: Cascade)
+
+  @@index([conversacionId])
+  @@map("mensajes")
 }
 
 // ============================================================
