@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, Wheat, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Wheat, Loader2, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { cultivosService } from '@/services/cultivosService';
 import { extraerMensajeError } from '@/lib/apiClient';
+import type { Cultivo } from '@/types/agro';
 
 const colorCultivo = (nombre: string) => {
   const map: Record<string, string> = {
@@ -22,6 +23,7 @@ const colorCultivo = (nombre: string) => {
 export function CultivosPage() {
   const qc = useQueryClient();
   const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<Cultivo | null>(null);
   const [nombre, setNombre] = useState('');
 
   const { data } = useQuery({
@@ -40,6 +42,17 @@ export function CultivosPage() {
     onError: (e) => toast.error(extraerMensajeError(e)),
   });
 
+  const actualizar = useMutation({
+    mutationFn: ({ id, n }: { id: string; n: string }) => cultivosService.actualizar(id, n),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['cultivos'] });
+      toast.success('Cultivo actualizado');
+      setEditing(null);
+      setNombre('');
+    },
+    onError: (e) => toast.error(extraerMensajeError(e)),
+  });
+
   const eliminar = useMutation({
     mutationFn: (id: string) => cultivosService.eliminar(id),
     onSuccess: () => {
@@ -49,6 +62,11 @@ export function CultivosPage() {
     onError: (e) => toast.error(extraerMensajeError(e)),
   });
 
+  const abrirEditar = (c: Cultivo) => {
+    setEditing(c);
+    setNombre(c.nombre);
+  };
+
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <header className="flex items-end justify-between gap-4 flex-wrap">
@@ -56,7 +74,7 @@ export function CultivosPage() {
           <p className="text-sm text-muted-foreground">Catálogo compartido por toda la cuenta</p>
           <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">Cultivos</h1>
         </div>
-        <Button onClick={() => setCreating(true)}>
+        <Button onClick={() => { setNombre(''); setCreating(true); }}>
           <Plus className="h-4 w-4" /> Nuevo cultivo
         </Button>
       </header>
@@ -85,15 +103,24 @@ export function CultivosPage() {
                 >
                   <span className="h-2 w-2 rounded-full" style={{ background: color }} />
                   <span className="font-medium capitalize text-foreground">{c.nombre}</span>
-                  <button
-                    onClick={() => {
-                      if (confirm(`¿Eliminar cultivo "${c.nombre}"?`)) eliminar.mutate(c.id);
-                    }}
-                    className="ml-2 lg:opacity-0 lg:group-hover:opacity-100 h-6 w-6 rounded-full bg-destructive/10 text-destructive flex items-center justify-center transition"
-                    aria-label="Eliminar"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </button>
+                  <div className="ml-2 lg:opacity-0 lg:group-hover:opacity-100 flex items-center gap-1 transition">
+                    <button
+                      onClick={() => abrirEditar(c)}
+                      className="h-6 w-6 rounded-full bg-foreground/10 text-foreground flex items-center justify-center"
+                      aria-label="Editar"
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (confirm(`¿Eliminar cultivo "${c.nombre}"?`)) eliminar.mutate(c.id);
+                      }}
+                      className="h-6 w-6 rounded-full bg-destructive/10 text-destructive flex items-center justify-center"
+                      aria-label="Eliminar"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </div>
                 </motion.li>
               );
             })}
@@ -101,16 +128,20 @@ export function CultivosPage() {
         </ul>
       )}
 
+      {/* Sheet crear/editar */}
       <Sheet
-        open={creating}
-        onOpenChange={(o) => !o && setCreating(false)}
-        title="Nuevo cultivo"
-        description="Agregá un cultivo al catálogo. Después lo usás al asignar lotes a una campaña."
+        open={creating || !!editing}
+        onOpenChange={(o) => { if (!o) { setCreating(false); setEditing(null); setNombre(''); } }}
+        title={editing ? 'Editar cultivo' : 'Nuevo cultivo'}
+        description={editing ? 'Cambiá el nombre del cultivo.' : 'Agregá un cultivo al catálogo.'}
       >
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            if (nombre.trim()) crear.mutate(nombre.trim());
+            const trimmed = nombre.trim();
+            if (!trimmed) return;
+            if (editing) actualizar.mutate({ id: editing.id, n: trimmed });
+            else crear.mutate(trimmed);
           }}
           className="space-y-4"
         >
@@ -119,10 +150,12 @@ export function CultivosPage() {
             <Input id="cn" placeholder="Ej: arveja" value={nombre} onChange={(e) => setNombre(e.target.value)} autoFocus />
           </div>
           <div className="flex justify-end gap-2 border-t border-border pt-4">
-            <Button type="button" variant="outline" onClick={() => setCreating(false)}>Cancelar</Button>
-            <Button type="submit" disabled={crear.isPending}>
-              {crear.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-              Agregar
+            <Button type="button" variant="outline" onClick={() => { setCreating(false); setEditing(null); setNombre(''); }}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={crear.isPending || actualizar.isPending}>
+              {(crear.isPending || actualizar.isPending) && <Loader2 className="h-4 w-4 animate-spin" />}
+              {editing ? 'Guardar' : 'Agregar'}
             </Button>
           </div>
         </form>

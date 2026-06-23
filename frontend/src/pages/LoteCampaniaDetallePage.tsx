@@ -8,6 +8,9 @@ import { z } from 'zod';
 import {
   ArrowLeft, Plus, Trash2, Loader2, Sprout, Beaker, ClipboardList, Tractor as TractorIcon, Pencil,
 } from 'lucide-react';
+import { EditarInsumoSheet } from '@/components/insumos/EditarInsumoSheet';
+import { EditarLaborSheet } from '@/components/labores/EditarLaborSheet';
+import type { Labor, InsumoAplicado } from '@/types/agro';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -56,6 +59,8 @@ export function LoteCampaniaDetallePage() {
   const [tab, setTab] = useState<'resultado' | 'labores' | 'insumos'>('resultado');
   const [creating, setCreating] = useState<'labor' | 'insumo' | null>(null);
   const [editandoDatos, setEditandoDatos] = useState(false);
+  const [editandoLabor, setEditandoLabor] = useState<Labor | null>(null);
+  const [editandoInsumo, setEditandoInsumo] = useState<InsumoAplicado | null>(null);
 
   const { data: lc, isLoading } = useQuery({
     queryKey: ['lote-campania', id],
@@ -217,12 +222,20 @@ export function LoteCampaniaDetallePage() {
                       {labor.formaPago && <p className="text-[10px] text-muted-foreground uppercase">{labor.formaPago}</p>}
                     </div>
                   </div>
-                  <button
-                    onClick={() => { if (confirm('¿Eliminar labor?')) eliminarLabor.mutate(labor.id); }}
-                    className="mt-2 lg:opacity-0 lg:group-hover:opacity-100 text-xs text-destructive flex items-center gap-1 transition"
-                  >
-                    <Trash2 className="h-3 w-3" /> Eliminar
-                  </button>
+                  <div className="mt-2 lg:opacity-0 lg:group-hover:opacity-100 flex items-center gap-3 transition">
+                    <button
+                      onClick={() => setEditandoLabor(labor as Labor)}
+                      className="text-xs text-primary hover:underline flex items-center gap-1"
+                    >
+                      <Pencil className="h-3 w-3" /> Editar
+                    </button>
+                    <button
+                      onClick={() => { if (confirm('¿Eliminar labor?')) eliminarLabor.mutate(labor.id); }}
+                      className="text-xs text-destructive hover:underline flex items-center gap-1"
+                    >
+                      <Trash2 className="h-3 w-3" /> Eliminar
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -264,12 +277,20 @@ export function LoteCampaniaDetallePage() {
                       {ins.formaPago && <p className="text-[10px] text-muted-foreground uppercase">{ins.formaPago}</p>}
                     </div>
                   </div>
-                  <button
-                    onClick={() => { if (confirm('¿Eliminar insumo?')) eliminarInsumo.mutate(ins.id); }}
-                    className="mt-2 lg:opacity-0 lg:group-hover:opacity-100 text-xs text-destructive flex items-center gap-1 transition"
-                  >
-                    <Trash2 className="h-3 w-3" /> Eliminar
-                  </button>
+                  <div className="mt-2 lg:opacity-0 lg:group-hover:opacity-100 flex items-center gap-3 transition">
+                    <button
+                      onClick={() => setEditandoInsumo(ins as InsumoAplicado)}
+                      className="text-xs text-primary hover:underline flex items-center gap-1"
+                    >
+                      <Pencil className="h-3 w-3" /> Editar
+                    </button>
+                    <button
+                      onClick={() => { if (confirm('¿Eliminar insumo?')) eliminarInsumo.mutate(ins.id); }}
+                      className="text-xs text-destructive hover:underline flex items-center gap-1"
+                    >
+                      <Trash2 className="h-3 w-3" /> Eliminar
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -299,6 +320,16 @@ export function LoteCampaniaDetallePage() {
           fechaCosecha: lc.fechaCosecha?.slice(0, 10) ?? null,
         }}
         onClose={() => setEditandoDatos(false)}
+      />
+      <EditarLaborSheet
+        open={!!editandoLabor}
+        labor={editandoLabor}
+        onClose={() => setEditandoLabor(null)}
+      />
+      <EditarInsumoSheet
+        open={!!editandoInsumo}
+        insumo={editandoInsumo}
+        onClose={() => setEditandoInsumo(null)}
       />
     </div>
   );
