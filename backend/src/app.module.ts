@@ -17,6 +17,7 @@ import { LaboresModule } from './modules/labores/labores.module';
 import { InsumosAplicadosModule } from './modules/insumos-aplicados/insumos-aplicados.module';
 import { CalculosModule } from './modules/calculos/calculos.module';
 import { LluviasModule } from './modules/lluvias/lluvias.module';
+import { ClimaModule } from './modules/clima/clima.module';
 import { HealthModule } from './modules/health/health.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
@@ -50,6 +51,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     InsumosAplicadosModule,
     CalculosModule,
     LluviasModule,
+    ClimaModule,
   ],
   providers: [
     { provide: APP_PIPE, useClass: ZodValidationPipe },

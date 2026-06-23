@@ -11,6 +11,7 @@ import { CargaPage } from '@/pages/CargaPage';
 import { CultivosPage } from '@/pages/CultivosPage';
 import { InsumosPage } from '@/pages/InsumosPage';
 import { LluviasPage } from '@/pages/LluviasPage';
+import { ClimaPage } from '@/pages/ClimaPage';
 import { ResumenPage } from '@/pages/ResumenPage';
 
 export const router = createBrowserRouter([
@@ -26,6 +27,7 @@ export const router = createBrowserRouter([
       { path: '/lotes-campania/:id', element: <LoteCampaniaDetallePage /> },
       { path: '/carga', element: <CargaPage /> },
       { path: '/lluvias', element: <LluviasPage /> },
+      { path: '/clima', element: <ClimaPage /> },
       { path: '/cultivos', element: <CultivosPage /> },
       { path: '/insumos', element: <InsumosPage /> },
       { path: '/resumen', element: <ResumenPage /> },

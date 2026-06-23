@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { motion } from 'framer-motion';
 import {
-  CloudRain, Droplets, Calendar as CalendarIcon, Loader2, Trash2,
+  CloudRain, Droplets, Calendar as CalendarIcon, Loader2, Trash2, Sparkles,
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { toast } from 'sonner';
@@ -18,9 +18,11 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { HeatmapLluvias } from '@/components/charts/HeatmapLluvias';
 import { AnimatedNumber } from '@/components/charts/AnimatedNumber';
 import { lluviasService } from '@/services/lluviasService';
+import { climaService } from '@/services/climaService';
 import { establecimientosService } from '@/services/establecimientosService';
 import { extraerMensajeError } from '@/lib/apiClient';
 import { formatearFecha } from '@/utils/formatters';
+import type { Establecimiento } from '@/types/agro';
 
 const MESES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
@@ -212,6 +214,7 @@ export function LluviasPage() {
         open={!!fechaSeleccionada}
         fecha={fechaSeleccionada}
         establecimientoId={estabFiltro || null}
+        establecimiento={establecimientos?.items.find((e) => e.id === estabFiltro)}
         registroExistente={
           fechaSeleccionada
             ? registros?.find((r) => r.fecha.slice(0, 10) === fechaSeleccionada && (r.establecimientoId ?? '') === (estabFiltro || ''))
@@ -257,19 +260,21 @@ function LluviaSheet({
   open,
   fecha,
   establecimientoId,
+  establecimiento,
   registroExistente,
   onClose,
 }: {
   open: boolean;
   fecha: string | null;
   establecimientoId: string | null;
+  establecimiento?: Establecimiento;
   registroExistente?: ReturnType<typeof lluviasService.listar> extends Promise<(infer T)[]> ? T : never;
   onClose: () => void;
 }) {
   const qc = useQueryClient();
   const isEdit = !!registroExistente;
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormInput, unknown, FormData>({
+  const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm<FormInput, unknown, FormData>({
     resolver: zodResolver(schema),
     values: {
       fecha: fecha ?? '',
@@ -277,6 +282,35 @@ function LluviaSheet({
       nota: registroExistente?.nota ?? '',
     },
   });
+
+  // Botón "Importar de Open-Meteo": pide al backend el dato histórico de ese día
+  // si el establecimiento tiene coordenadas cargadas. Pre-rellena el campo mm.
+  const [importando, setImportando] = useState(false);
+  const puedeImportar = !!(fecha && establecimiento?.latitud && establecimiento?.longitud);
+
+  const importarOpenMeteo = async () => {
+    if (!puedeImportar) return;
+    setImportando(true);
+    try {
+      const r = await climaService.historico(
+        Number(establecimiento!.latitud),
+        Number(establecimiento!.longitud),
+        fecha!,
+        fecha!,
+      );
+      const dia = r.dias[0];
+      if (dia) {
+        setValue('mm', dia.lluvia);
+        toast.success(`Open-Meteo: ${dia.lluvia.toFixed(1)} mm ese día`);
+      } else {
+        toast.message('Sin datos de Open-Meteo para esa fecha');
+      }
+    } catch (e) {
+      toast.error(extraerMensajeError(e));
+    } finally {
+      setImportando(false);
+    }
+  };
 
   const mutation = useMutation({
     mutationFn: (data: FormData) =>
@@ -318,7 +352,21 @@ function LluviaSheet({
         <input type="hidden" {...register('fecha')} />
 
         <div className="space-y-2">
-          <Label htmlFor="mm">Milímetros caídos *</Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="mm">Milímetros caídos *</Label>
+            {puedeImportar && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={importarOpenMeteo}
+                disabled={importando}
+              >
+                {importando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                Importar de Open-Meteo
+              </Button>
+            )}
+          </div>
           <div className="relative">
             <Input
               id="mm"

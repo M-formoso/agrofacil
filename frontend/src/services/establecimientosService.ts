@@ -5,6 +5,8 @@ import type { Establecimiento, Tenencia } from '@/types/agro';
 export interface CrearEstablecimientoData {
   nombre: string;
   ubicacion?: string;
+  latitud?: number | null;
+  longitud?: number | null;
   tenencia?: Tenencia;
   superficieTotalHa?: number;
 }

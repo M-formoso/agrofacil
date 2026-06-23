@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Pencil, Trash2, MapPin, Sprout, Tractor, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, MapPin, Sprout, Tractor, Loader2, LocateFixed } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +19,8 @@ import type { Establecimiento, Tenencia } from '@/types/agro';
 const schema = z.object({
   nombre: z.string().min(1, 'Requerido'),
   ubicacion: z.string().optional(),
+  latitud: z.coerce.number().min(-90).max(90).optional().nullable(),
+  longitud: z.coerce.number().min(-180).max(180).optional().nullable(),
   tenencia: z.enum(['propio', 'arrendado', 'mixto']),
   superficieTotalHa: z.coerce.number().nonnegative().optional(),
 });
@@ -187,11 +189,39 @@ function EstablecimientoSheet({
       ? {
           nombre: editing.nombre,
           ubicacion: editing.ubicacion ?? '',
+          latitud: editing.latitud ? Number(editing.latitud) : undefined,
+          longitud: editing.longitud ? Number(editing.longitud) : undefined,
           tenencia: editing.tenencia,
           superficieTotalHa: editing.superficieTotalHa ? Number(editing.superficieTotalHa) : undefined,
         }
-      : { nombre: '', ubicacion: '', tenencia: 'propio', superficieTotalHa: undefined },
+      : {
+          nombre: '', ubicacion: '', tenencia: 'propio',
+          latitud: undefined, longitud: undefined,
+          superficieTotalHa: undefined,
+        },
   });
+
+  const [obteniendoUbicacion, setObteniendoUbicacion] = useState(false);
+  const tomarUbicacionActual = () => {
+    if (!navigator.geolocation) {
+      toast.error('Tu navegador no soporta geolocalización');
+      return;
+    }
+    setObteniendoUbicacion(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setValue('latitud', Number(pos.coords.latitude.toFixed(6)));
+        setValue('longitud', Number(pos.coords.longitude.toFixed(6)));
+        toast.success('Coordenadas tomadas de tu ubicación');
+        setObteniendoUbicacion(false);
+      },
+      (err) => {
+        toast.error(`No se pudo obtener ubicación: ${err.message}`);
+        setObteniendoUbicacion(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  };
 
   const mutation = useMutation({
     mutationFn: (data: FormData) =>
@@ -263,6 +293,40 @@ function EstablecimientoSheet({
           />
           <p className="text-[11px] text-muted-foreground">
             Informativa. La superficie real surge de la suma de los lotes que cargues.
+          </p>
+        </div>
+
+        {/* Coordenadas para clima */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label>Coordenadas (para clima)</Label>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={tomarUbicacionActual}
+              disabled={obteniendoUbicacion}
+            >
+              {obteniendoUbicacion ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LocateFixed className="h-3.5 w-3.5" />}
+              Usar ubicación actual
+            </Button>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <Input
+              type="number"
+              step="0.0000001"
+              placeholder="Latitud"
+              {...register('latitud', { setValueAs: (v) => (v === '' || v === null ? null : Number(v)) })}
+            />
+            <Input
+              type="number"
+              step="0.0000001"
+              placeholder="Longitud"
+              {...register('longitud', { setValueAs: (v) => (v === '' || v === null ? null : Number(v)) })}
+            />
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Opcional. Si las cargás, la página de Clima muestra el pronóstico del campo.
           </p>
         </div>
 

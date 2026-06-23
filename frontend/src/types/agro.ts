@@ -13,6 +13,8 @@ export interface Establecimiento {
   cuentaId: string;
   nombre: string;
   ubicacion: string | null;
+  latitud: string | null;
+  longitud: string | null;
   tenencia: Tenencia;
   superficieTotalHa: string | null;
   activo: boolean;

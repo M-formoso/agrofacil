@@ -74,6 +74,8 @@ model Establecimiento {
   cuentaId            String   @map("cuenta_id")
   nombre              String
   ubicacion           String?
+  latitud             Decimal? @db.Decimal(10, 7)
+  longitud            Decimal? @db.Decimal(10, 7)
   tenencia            Tenencia @default(propio)
   superficieTotalHa   Decimal? @map("superficie_total_ha") @db.Decimal(12, 4)
   activo              Boolean  @default(true)
