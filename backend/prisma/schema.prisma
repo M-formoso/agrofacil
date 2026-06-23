@@ -227,6 +227,11 @@ model Labor {
 // Registro de lluvias
 // ============================================================
 
+enum OrigenLluvia {
+  manual
+  open_meteo
+}
+
 model RegistroLluvia {
   id                String           @id @default(uuid())
   cuentaId          String           @map("cuenta_id")
@@ -234,6 +239,7 @@ model RegistroLluvia {
   fecha             DateTime         @db.Date
   mm                Decimal          @db.Decimal(8, 2)
   nota              String?
+  origen            OrigenLluvia     @default(manual)
   activo            Boolean          @default(true)
   createdAt         DateTime         @default(now()) @map("created_at")
   updatedAt         DateTime         @updatedAt @map("updated_at")

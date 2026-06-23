@@ -1,6 +1,8 @@
 import { apiClient } from '@/lib/apiClient';
 import { buildQuery } from './_apiHelpers';
 
+export type OrigenLluvia = 'manual' | 'open_meteo';
+
 export interface RegistroLluvia {
   id: string;
   cuentaId: string;
@@ -8,6 +10,7 @@ export interface RegistroLluvia {
   fecha: string;       // ISO date (con hora 00:00:00.000Z)
   mm: string;          // Decimal serializado
   nota: string | null;
+  origen: OrigenLluvia;
   activo: boolean;
   createdAt: string;
   updatedAt: string;
@@ -21,6 +24,14 @@ export interface ResumenLluvias {
   maxDia: string;
   promedioPorDiaConLluvia: string;
   porMes: { mes: number; mm: string; dias: number }[];
+}
+
+export interface ResultadoSync {
+  procesados: number;
+  creados: number;
+  actualizados: number;
+  saltadosPorManual: number;
+  errores: number;
 }
 
 export interface RegistrarLluviaData {
@@ -48,4 +59,7 @@ export const lluviasService = {
     apiClient.patch<RegistroLluvia>(`/lluvias/${id}`, data).then((r) => r.data),
 
   eliminar: (id: string) => apiClient.delete(`/lluvias/${id}`),
+
+  sincronizar: (dias = 30) =>
+    apiClient.post<ResultadoSync>('/lluvias/sincronizar', { dias }).then((r) => r.data),
 };

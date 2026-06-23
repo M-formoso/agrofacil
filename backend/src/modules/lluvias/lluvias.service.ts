@@ -1,16 +1,31 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
+import { OrigenLluvia, Prisma } from '@prisma/client';
 import Decimal from 'decimal.js';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ClimaService } from '../clima/clima.service';
 import type {
   ActualizarLluviaDto,
   ListarLluviasQuery,
   RegistrarLluviaDto,
 } from './lluvias.dto';
 
+export interface ResultadoSync {
+  procesados: number;
+  creados: number;
+  actualizados: number;
+  saltadosPorManual: number;
+  errores: number;
+}
+
 @Injectable()
 export class LluviasService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(LluviasService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly climaService: ClimaService,
+  ) {}
 
   /** Listado del año (puede filtrar por establecimiento). Ordenado por fecha asc. */
   async listar(cuentaId: string, q: ListarLluviasQuery) {
@@ -28,10 +43,9 @@ export class LluviasService {
     });
   }
 
-  /** Upsert: si ya existe un registro para (fecha, establecimiento) lo actualiza.
-   *  Esto evita duplicados y permite "Toqué de más, corrijo" sin pasos extra. */
+  /** Upsert manual: si ya existe lo actualiza marcándolo como 'manual'.
+   *  Carga del productor → siempre tiene prioridad sobre datos automáticos. */
   async registrar(cuentaId: string, dto: RegistrarLluviaDto) {
-    // Si pasa establecimientoId, validar pertenencia
     if (dto.establecimientoId) {
       const est = await this.prisma.establecimiento.findFirst({
         where: { id: dto.establecimientoId, cuentaId, activo: true },
@@ -53,7 +67,7 @@ export class LluviasService {
     if (existente) {
       return this.prisma.registroLluvia.update({
         where: { id: existente.id },
-        data: { mm: dto.mm, nota: dto.nota ?? null },
+        data: { mm: dto.mm, nota: dto.nota ?? null, origen: OrigenLluvia.manual },
       });
     }
 
@@ -64,6 +78,7 @@ export class LluviasService {
         fecha,
         mm: dto.mm,
         nota: dto.nota,
+        origen: OrigenLluvia.manual,
       },
     });
   }
@@ -76,6 +91,8 @@ export class LluviasService {
       data: {
         ...(dto.mm !== undefined && { mm: dto.mm }),
         ...(dto.nota !== undefined && { nota: dto.nota }),
+        // Cualquier toque manual eleva el origen
+        origen: OrigenLluvia.manual,
       },
     });
   }
@@ -86,14 +103,7 @@ export class LluviasService {
     await this.prisma.registroLluvia.update({ where: { id }, data: { activo: false } });
   }
 
-  /**
-   * Estadísticas anuales:
-   *  - total mm
-   *  - días con lluvia (mm > 0)
-   *  - máximo en un día
-   *  - promedio por día con lluvia
-   *  - desglose por mes (12 valores)
-   */
+  /** Estadísticas anuales. */
   async resumen(cuentaId: string, q: ListarLluviasQuery) {
     const registros = await this.listar(cuentaId, q);
 
@@ -130,5 +140,111 @@ export class LluviasService {
       promedioPorDiaConLluvia: promedioDia.toFixed(2),
       porMes,
     };
+  }
+
+  // ============================================================
+  // SINCRONIZACIÓN CON OPEN-METEO
+  // ============================================================
+
+  /**
+   * Sincroniza los mm de Open-Meteo a la BD para todos los establecimientos
+   * con coordenadas cargadas. Si pasa cuentaId, restringe a esa cuenta.
+   *
+   * Reglas:
+   *  - Si ya hay un registro con origen='manual' para ese día y campo → NO se
+   *    pisa (el productor mandó).
+   *  - Si hay un registro con origen='open_meteo' → se actualiza.
+   *  - Si no existe → se crea con origen='open_meteo'.
+   */
+  async sincronizar(params: {
+    cuentaId?: string;
+    desde: string;
+    hasta: string;
+  }): Promise<ResultadoSync> {
+    const establecimientos = await this.prisma.establecimiento.findMany({
+      where: {
+        activo: true,
+        latitud: { not: null },
+        longitud: { not: null },
+        ...(params.cuentaId && { cuentaId: params.cuentaId }),
+      },
+      select: { id: true, cuentaId: true, latitud: true, longitud: true, nombre: true },
+    });
+
+    let creados = 0;
+    let actualizados = 0;
+    let saltadosPorManual = 0;
+    let errores = 0;
+
+    for (const est of establecimientos) {
+      try {
+        const lat = Number(est.latitud);
+        const lon = Number(est.longitud);
+        const datos = await this.climaService.historico(lat, lon, params.desde, params.hasta);
+
+        for (const dia of datos.dias) {
+          const fecha = new Date(`${dia.fecha}T00:00:00.000Z`);
+          const existente = await this.prisma.registroLluvia.findFirst({
+            where: {
+              cuentaId: est.cuentaId,
+              establecimientoId: est.id,
+              fecha,
+              activo: true,
+            },
+          });
+
+          if (existente?.origen === OrigenLluvia.manual) {
+            saltadosPorManual += 1;
+            continue;
+          }
+
+          if (existente) {
+            await this.prisma.registroLluvia.update({
+              where: { id: existente.id },
+              data: { mm: dia.lluvia, origen: OrigenLluvia.open_meteo },
+            });
+            actualizados += 1;
+          } else {
+            await this.prisma.registroLluvia.create({
+              data: {
+                cuentaId: est.cuentaId,
+                establecimientoId: est.id,
+                fecha,
+                mm: dia.lluvia,
+                origen: OrigenLluvia.open_meteo,
+              },
+            });
+            creados += 1;
+          }
+        }
+      } catch (err) {
+        this.logger.error(
+          `Error sincronizando establecimiento ${est.id} (${est.nombre}): ${(err as Error).message}`,
+        );
+        errores += 1;
+      }
+    }
+
+    return {
+      procesados: establecimientos.length,
+      creados,
+      actualizados,
+      saltadosPorManual,
+      errores,
+    };
+  }
+
+  /** Cron: corre todos los días a las 06:00 hora ARG y sincroniza el día anterior
+   *  para TODOS los establecimientos con coordenadas. */
+  @Cron('0 6 * * *', { timeZone: 'America/Argentina/Buenos_Aires' })
+  async cronSincronizarAyer(): Promise<void> {
+    const ayer = new Date();
+    ayer.setUTCDate(ayer.getUTCDate() - 1);
+    const ayerIso = ayer.toISOString().slice(0, 10);
+    this.logger.log(`Cron sync Open-Meteo: ${ayerIso}`);
+    const r = await this.sincronizar({ desde: ayerIso, hasta: ayerIso });
+    this.logger.log(
+      `Sync completado: procesados=${r.procesados} creados=${r.creados} actualizados=${r.actualizados} manuales=${r.saltadosPorManual} errores=${r.errores}`,
+    );
   }
 }

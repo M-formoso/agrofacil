@@ -12,7 +12,12 @@ import {
   Query,
 } from '@nestjs/common';
 import { LluviasService } from './lluvias.service';
-import { ActualizarLluviaDto, RegistrarLluviaDto, listarLluviasSchema } from './lluvias.dto';
+import {
+  ActualizarLluviaDto,
+  RegistrarLluviaDto,
+  listarLluviasSchema,
+  sincronizarSchema,
+} from './lluvias.dto';
 import { Usuario } from '../../common/decorators/usuario.decorator';
 import type { UsuarioActual } from '../../common/types/usuario-actual';
 
@@ -35,6 +40,27 @@ export class LluviasController {
   @HttpCode(HttpStatus.OK)
   registrar(@Usuario() user: UsuarioActual, @Body() dto: RegistrarLluviaDto) {
     return this.service.registrar(user.cuentaId, dto);
+  }
+
+  /** Sincronización manual: trae mm de Open-Meteo para los últimos N días
+   *  para todos los establecimientos de la cuenta con coordenadas cargadas.
+   *  Respeta registros manuales (no los pisa). */
+  @Post('sincronizar')
+  @HttpCode(HttpStatus.OK)
+  async sincronizar(
+    @Usuario() user: UsuarioActual,
+    @Body() body: { dias?: number } = {},
+  ) {
+    const { dias } = sincronizarSchema.parse(body);
+    const hasta = new Date();
+    hasta.setUTCDate(hasta.getUTCDate() - 1); // ayer (Open-Meteo no tiene "hoy" completo)
+    const desde = new Date(hasta);
+    desde.setUTCDate(desde.getUTCDate() - dias + 1);
+    return this.service.sincronizar({
+      cuentaId: user.cuentaId,
+      desde: desde.toISOString().slice(0, 10),
+      hasta: hasta.toISOString().slice(0, 10),
+    });
   }
 
   @Patch(':id')

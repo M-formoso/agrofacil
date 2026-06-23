@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { motion } from 'framer-motion';
 import {
-  CloudRain, Droplets, Calendar as CalendarIcon, Loader2, Trash2, Sparkles,
+  CloudRain, Droplets, Calendar as CalendarIcon, Loader2, Trash2, Sparkles, RefreshCw, Bot,
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { toast } from 'sonner';
@@ -85,6 +85,7 @@ export function LluviasPage() {
             <p className="text-sm text-muted-foreground">Calendario anual del campo</p>
             <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">Lluvias</h1>
           </div>
+          <SyncButton />
         </div>
         <div className="flex flex-wrap gap-2">
           <select
@@ -226,6 +227,38 @@ export function LluviasPage() {
   );
 }
 
+function SyncButton() {
+  const qc = useQueryClient();
+  const sync = useMutation({
+    mutationFn: () => lluviasService.sincronizar(30),
+    onSuccess: (r) => {
+      qc.invalidateQueries({ queryKey: ['lluvias'] });
+      qc.invalidateQueries({ queryKey: ['lluvias-resumen'] });
+      if (r.procesados === 0) {
+        toast.warning('Ningún establecimiento tiene coordenadas cargadas todavía');
+      } else {
+        toast.success(
+          `Sincronizado: ${r.creados} nuevos, ${r.actualizados} actualizados${r.saltadosPorManual > 0 ? `, ${r.saltadosPorManual} respetados (manual)` : ''}`,
+        );
+      }
+    },
+    onError: (e) => toast.error(extraerMensajeError(e)),
+  });
+
+  return (
+    <Button
+      variant="outline"
+      onClick={() => sync.mutate()}
+      disabled={sync.isPending}
+      className="shrink-0"
+      title="Trae los mm de los últimos 30 días de Open-Meteo. Respeta lo que cargaste a mano."
+    >
+      {sync.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+      <span className="hidden sm:inline">Sincronizar</span>
+    </Button>
+  );
+}
+
 interface StatCardProps {
   label: string;
   value: number;
@@ -350,6 +383,16 @@ function LluviaSheet({
     >
       <form onSubmit={handleSubmit((d) => mutation.mutate(d))} className="space-y-4">
         <input type="hidden" {...register('fecha')} />
+
+        {/* Origen del dato (badge si fue automatizado) */}
+        {registroExistente?.origen === 'open_meteo' && (
+          <div className="rounded-lg border border-info/30 bg-info/5 px-3 py-2 flex items-center gap-2">
+            <Bot className="h-4 w-4 text-info shrink-0" />
+            <p className="text-xs text-foreground">
+              <strong>Importado automáticamente</strong> de Open-Meteo. Si tu pluviómetro marcó otra cosa, sobreescribilo guardando — quedará como manual.
+            </p>
+          </div>
+        )}
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">

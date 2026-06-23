@@ -22,3 +22,9 @@ export const listarLluviasSchema = z.object({
   establecimientoId: z.string().uuid().optional(),
 });
 export type ListarLluviasQuery = z.infer<typeof listarLluviasSchema>;
+
+export const sincronizarSchema = z.object({
+  /** Días hacia atrás a sincronizar. Default 30, max 365. */
+  dias: z.coerce.number().int().min(1).max(365).default(30),
+});
+export type SincronizarBody = z.infer<typeof sincronizarSchema>;
