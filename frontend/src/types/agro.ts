@@ -16,6 +16,8 @@ export interface Establecimiento {
   latitud: string | null;
   longitud: string | null;
   tenencia: Tenencia;
+  arrendamientoValor: string | null;
+  arrendamientoUnidad: UnidadArrendamiento | null;
   superficieTotalHa: string | null;
   activo: boolean;
   createdAt: string;
@@ -54,6 +56,15 @@ export interface Campania {
 
 export interface Cultivo {
   id: string;
+  nombre: string;
+  activo: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Variedad {
+  id: string;
+  cultivoId: string;
   nombre: string;
   activo: boolean;
   createdAt: string;

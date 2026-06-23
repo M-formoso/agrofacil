@@ -7,6 +7,7 @@ export const crearLoteCampaniaSchema = z.object({
   loteId: z.string().uuid('loteId inválido'),
   campaniaId: z.string().uuid('campaniaId inválido'),
   cultivoId: z.string().uuid('cultivoId inválido'),
+  variedadId: z.string().uuid().optional().nullable(),
   superficieSembradaHa: z.coerce.number().positive('Debe ser > 0').max(100000, 'Superficie inusualmente alta'),
   fechaSiembra: fechaIso.optional(),
   rindeEstimadoQqHa: z.coerce
@@ -24,6 +25,7 @@ export class CrearLoteCampaniaDto extends createZodDto(crearLoteCampaniaSchema) 
 
 export const actualizarLoteCampaniaSchema = z.object({
   cultivoId: z.string().uuid().optional(),
+  variedadId: z.string().uuid().nullable().optional(),
   superficieSembradaHa: z.coerce.number().positive().max(100000).optional(),
   fechaSiembra: fechaIso.nullable().optional(),
   rindeEstimadoQqHa: z.coerce

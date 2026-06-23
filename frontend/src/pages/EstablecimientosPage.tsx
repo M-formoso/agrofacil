@@ -14,16 +14,37 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { establecimientosService } from '@/services/establecimientosService';
 import { extraerMensajeError } from '@/lib/apiClient';
 import { formatearHa } from '@/utils/formatters';
-import type { Establecimiento, Tenencia } from '@/types/agro';
+import type { Establecimiento, Tenencia, UnidadArrendamiento } from '@/types/agro';
+import { MapPicker } from '@/components/maps/MapPicker';
+import { cn } from '@/lib/utils';
 
-const schema = z.object({
-  nombre: z.string().min(1, 'Requerido'),
-  ubicacion: z.string().optional(),
-  latitud: z.coerce.number().min(-90).max(90).optional().nullable(),
-  longitud: z.coerce.number().min(-180).max(180).optional().nullable(),
-  tenencia: z.enum(['propio', 'arrendado', 'mixto']),
-  superficieTotalHa: z.coerce.number().nonnegative().optional(),
-});
+const schema = z
+  .object({
+    nombre: z.string().min(1, 'Requerido'),
+    ubicacion: z.string().optional(),
+    latitud: z.coerce.number().min(-90).max(90).optional().nullable(),
+    longitud: z.coerce.number().min(-180).max(180).optional().nullable(),
+    tenencia: z.enum(['propio', 'arrendado', 'mixto']),
+    arrendamientoValor: z.coerce.number().nonnegative().optional().nullable(),
+    arrendamientoUnidad: z.enum(['qq_ha', 'usd_ha', 'pct_produccion']).optional().nullable(),
+    superficieTotalHa: z.coerce.number().nonnegative().optional(),
+  })
+  .superRefine((d, ctx) => {
+    if (d.tenencia === 'arrendado' || d.tenencia === 'mixto') {
+      if (d.arrendamientoValor === undefined || d.arrendamientoValor === null) {
+        ctx.addIssue({ code: 'custom', message: 'Requerido', path: ['arrendamientoValor'] });
+      }
+      if (!d.arrendamientoUnidad) {
+        ctx.addIssue({ code: 'custom', message: 'Requerido', path: ['arrendamientoUnidad'] });
+      }
+    }
+  });
+
+const UNIDADES_ARR: { value: UnidadArrendamiento; label: string; help: string }[] = [
+  { value: 'qq_ha',         label: 'qq/ha',  help: 'Quintales por hectárea' },
+  { value: 'usd_ha',        label: 'USD/ha', help: 'Dólares por hectárea' },
+  { value: 'pct_produccion', label: '%',     help: '% de la producción' },
+];
 type FormInput = z.input<typeof schema>;
 type FormData = z.output<typeof schema>;
 
@@ -192,11 +213,14 @@ function EstablecimientoSheet({
           latitud: editing.latitud ? Number(editing.latitud) : undefined,
           longitud: editing.longitud ? Number(editing.longitud) : undefined,
           tenencia: editing.tenencia,
+          arrendamientoValor: editing.arrendamientoValor ? Number(editing.arrendamientoValor) : undefined,
+          arrendamientoUnidad: editing.arrendamientoUnidad ?? undefined,
           superficieTotalHa: editing.superficieTotalHa ? Number(editing.superficieTotalHa) : undefined,
         }
       : {
           nombre: '', ubicacion: '', tenencia: 'propio',
           latitud: undefined, longitud: undefined,
+          arrendamientoValor: undefined, arrendamientoUnidad: undefined,
           superficieTotalHa: undefined,
         },
   });
@@ -236,6 +260,9 @@ function EstablecimientoSheet({
   });
 
   const tenencia = watch('tenencia');
+  const unidadArr = watch('arrendamientoUnidad');
+  const latActual = watch('latitud');
+  const lonActual = watch('longitud');
 
   return (
     <Sheet
@@ -296,10 +323,67 @@ function EstablecimientoSheet({
           </p>
         </div>
 
-        {/* Coordenadas para clima */}
+        {/* Solapa de arrendamiento (solo si tenencia=arrendado o mixto) */}
+        {(tenencia === 'arrendado' || tenencia === 'mixto') && (
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-xl bg-warning/5 border border-warning/30 p-4 space-y-3"
+          >
+            <p className="text-[11px] uppercase tracking-wider font-semibold text-warning">
+              Datos del arrendamiento del campo
+            </p>
+            <p className="text-[11px] text-muted-foreground">
+              Se aplica como costo por defecto a TODOS los lotes del establecimiento. Si un lote
+              tiene un acuerdo diferente, se sobrescribe a nivel lote.
+            </p>
+            <div className="grid grid-cols-5 gap-2">
+              <div className="col-span-2 space-y-1.5">
+                <Label htmlFor="arrVal">Valor</Label>
+                <Input
+                  id="arrVal"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="Ej: 4"
+                  {...register('arrendamientoValor', { setValueAs: (v) => (v === '' ? undefined : Number(v)) })}
+                />
+                {errors.arrendamientoValor && <p className="text-xs text-destructive">{errors.arrendamientoValor.message}</p>}
+              </div>
+              <div className="col-span-3 space-y-1.5">
+                <Label>Unidad</Label>
+                <div className="grid grid-cols-3 gap-1">
+                  {UNIDADES_ARR.map((u) => (
+                    <button
+                      key={u.value}
+                      type="button"
+                      onClick={() => setValue('arrendamientoUnidad', u.value, { shouldValidate: true })}
+                      className={cn(
+                        'h-10 rounded-md border text-xs font-medium transition',
+                        unidadArr === u.value
+                          ? 'border-warning bg-warning/15 text-warning'
+                          : 'border-border bg-surface hover:border-warning/40',
+                      )}
+                    >
+                      {u.label}
+                    </button>
+                  ))}
+                </div>
+                {errors.arrendamientoUnidad && <p className="text-xs text-destructive">{errors.arrendamientoUnidad.message}</p>}
+              </div>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              {unidadArr === 'qq_ha' && 'Costo en quintales por hectárea — se valoriza al precio del grano de cada lote.'}
+              {unidadArr === 'usd_ha' && 'Costo fijo en dólares por hectárea.'}
+              {unidadArr === 'pct_produccion' && 'Porcentaje del ingreso bruto del lote.'}
+            </p>
+          </motion.div>
+        )}
+
+        {/* Ubicación: mapa */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label>Coordenadas (para clima)</Label>
+            <Label>Ubicación del campo</Label>
             <Button
               type="button"
               size="sm"
@@ -308,25 +392,21 @@ function EstablecimientoSheet({
               disabled={obteniendoUbicacion}
             >
               {obteniendoUbicacion ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LocateFixed className="h-3.5 w-3.5" />}
-              Usar ubicación actual
+              Mi ubicación
             </Button>
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            <Input
-              type="number"
-              step="0.0000001"
-              placeholder="Latitud"
-              {...register('latitud', { setValueAs: (v) => (v === '' || v === null ? null : Number(v)) })}
-            />
-            <Input
-              type="number"
-              step="0.0000001"
-              placeholder="Longitud"
-              {...register('longitud', { setValueAs: (v) => (v === '' || v === null ? null : Number(v)) })}
-            />
-          </div>
+          <MapPicker
+            lat={typeof latActual === 'number' ? latActual : null}
+            lon={typeof lonActual === 'number' ? lonActual : null}
+            onChange={(la, lo) => {
+              setValue('latitud', Number(la.toFixed(6)));
+              setValue('longitud', Number(lo.toFixed(6)));
+            }}
+            height={260}
+          />
           <p className="text-[11px] text-muted-foreground">
-            Opcional. Si las cargás, la página de Clima muestra el pronóstico del campo.
+            Buscá una localidad, tocá el mapa, o arrastrá el marcador. Es opcional pero da clima
+            del campo y se puede usar para informes.
           </p>
         </div>
 

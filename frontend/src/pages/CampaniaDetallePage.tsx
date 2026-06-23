@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -18,6 +18,7 @@ import { campaniasService } from '@/services/campaniasService';
 import { lotesService } from '@/services/lotesService';
 import { cultivosService } from '@/services/cultivosService';
 import { lotesCampaniaService } from '@/services/lotesCampaniaService';
+import { variedadesService } from '@/services/variedadesService';
 import { extraerMensajeError } from '@/lib/apiClient';
 import { formatearFecha, formatearHa, formatearQqHa, formatearUsd } from '@/utils/formatters';
 import { cn } from '@/lib/utils';
@@ -25,6 +26,7 @@ import { cn } from '@/lib/utils';
 const schema = z.object({
   loteId: z.string().uuid('Elegí un lote'),
   cultivoId: z.string().uuid('Elegí un cultivo'),
+  variedadId: z.string().uuid().optional().or(z.literal('')),
   superficieSembradaHa: z.coerce.number().positive(),
   fechaSiembra: z.string().optional().or(z.literal('')),
   rindeEstimadoQqHa: z.coerce.number().nonnegative().optional(),
@@ -238,6 +240,7 @@ function AsignarLoteSheet({
     defaultValues: {
       loteId: '',
       cultivoId: '',
+      variedadId: '',
       superficieSembradaHa: 0,
       fechaSiembra: '',
       rindeEstimadoQqHa: undefined,
@@ -246,7 +249,23 @@ function AsignarLoteSheet({
   });
 
   const cultivoId = watch('cultivoId');
+  const variedadId = watch('variedadId');
   const loteId = watch('loteId');
+
+  // Cuando cambia el cultivo, limpiamos la variedad para evitar mismatches
+  const cultivoIdAnterior = useRef(cultivoId);
+  useEffect(() => {
+    if (cultivoIdAnterior.current && cultivoId !== cultivoIdAnterior.current) {
+      setValue('variedadId', '');
+    }
+    cultivoIdAnterior.current = cultivoId;
+  }, [cultivoId, setValue]);
+
+  const { data: variedades } = useQuery({
+    queryKey: ['variedades', cultivoId || null],
+    queryFn: () => variedadesService.listar(cultivoId || undefined),
+    enabled: !!cultivoId,
+  });
   const loteSeleccionado = lotes?.items.find((l) => l.id === loteId);
 
   // Autocompletar superficie con la del lote
@@ -262,6 +281,7 @@ function AsignarLoteSheet({
         cultivoId: data.cultivoId,
         campaniaId,
         superficieSembradaHa: data.superficieSembradaHa,
+        ...(data.variedadId ? { variedadId: data.variedadId } : {}),
         ...(data.fechaSiembra ? { fechaSiembra: data.fechaSiembra } : {}),
         ...(data.rindeEstimadoQqHa ? { rindeEstimadoQqHa: data.rindeEstimadoQqHa } : {}),
         ...(data.precioGranoUsdTn ? { precioGranoUsdTn: data.precioGranoUsdTn } : {}),
@@ -352,6 +372,48 @@ function AsignarLoteSheet({
           </div>
           {errors.cultivoId && <p className="text-xs text-destructive">{errors.cultivoId.message}</p>}
         </div>
+
+        {/* Variedad — solo si hay cultivo seleccionado */}
+        {cultivoId && (
+          <div className="space-y-2">
+            <Label>Variedad (opcional)</Label>
+            {variedades && variedades.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setValue('variedadId', '')}
+                  className={cn(
+                    'h-8 px-3 rounded-full border text-xs font-medium transition',
+                    !variedadId
+                      ? 'border-foreground/40 bg-muted text-foreground'
+                      : 'border-border bg-surface text-muted-foreground hover:border-foreground/30',
+                  )}
+                >
+                  Sin variedad
+                </button>
+                {variedades.map((v) => (
+                  <button
+                    key={v.id}
+                    type="button"
+                    onClick={() => setValue('variedadId', v.id)}
+                    className={cn(
+                      'h-8 px-3 rounded-full border text-xs font-medium transition',
+                      variedadId === v.id
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-border bg-surface hover:border-primary/40',
+                    )}
+                  >
+                    {v.nombre}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[11px] text-muted-foreground bg-muted/50 px-3 py-2 rounded">
+                Sin variedades cargadas para este cultivo. Podés agregarlas desde Cultivos.
+              </p>
+            )}
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">

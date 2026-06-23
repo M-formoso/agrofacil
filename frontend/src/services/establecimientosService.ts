@@ -1,6 +1,6 @@
 import { apiClient } from '@/lib/apiClient';
 import { getList } from './_apiHelpers';
-import type { Establecimiento, Tenencia } from '@/types/agro';
+import type { Establecimiento, Tenencia, UnidadArrendamiento } from '@/types/agro';
 
 export interface CrearEstablecimientoData {
   nombre: string;
@@ -8,6 +8,8 @@ export interface CrearEstablecimientoData {
   latitud?: number | null;
   longitud?: number | null;
   tenencia?: Tenencia;
+  arrendamientoValor?: number | null;
+  arrendamientoUnidad?: UnidadArrendamiento | null;
   superficieTotalHa?: number;
 }
 export type ActualizarEstablecimientoData = Partial<CrearEstablecimientoData>;

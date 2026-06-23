@@ -10,6 +10,7 @@ import configuration from './config/configuration';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CultivosModule } from './modules/cultivos/cultivos.module';
+import { VariedadesModule } from './modules/variedades/variedades.module';
 import { EstablecimientosModule } from './modules/establecimientos/establecimientos.module';
 import { LotesModule } from './modules/lotes/lotes.module';
 import { CampaniasModule } from './modules/campanias/campanias.module';
@@ -46,6 +47,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     HealthModule,
     AuthModule,
     CultivosModule,
+    VariedadesModule,
     EstablecimientosModule,
     LotesModule,
     CampaniasModule,

@@ -119,6 +119,8 @@ model Establecimiento {
   latitud             Decimal? @db.Decimal(10, 7)
   longitud            Decimal? @db.Decimal(10, 7)
   tenencia            Tenencia @default(propio)
+  arrendamientoValor  Decimal? @map("arrendamiento_valor") @db.Decimal(14, 4)
+  arrendamientoUnidad UnidadArrendamiento? @map("arrendamiento_unidad")
   superficieTotalHa   Decimal? @map("superficie_total_ha") @db.Decimal(12, 4)
   activo              Boolean  @default(true)
   createdAt           DateTime @default(now()) @map("created_at")
@@ -178,9 +180,26 @@ model Cultivo {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
+  variedades    Variedad[]
   lotesCampania LoteCampania[]
 
   @@map("cultivos")
+}
+
+model Variedad {
+  id         String   @id @default(uuid())
+  cultivoId  String   @map("cultivo_id")
+  nombre     String
+  activo     Boolean  @default(true)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  cultivo       Cultivo        @relation(fields: [cultivoId], references: [id])
+  lotesCampania LoteCampania[]
+
+  @@unique([cultivoId, nombre])
+  @@index([cultivoId])
+  @@map("variedades")
 }
 
 model LoteCampania {
@@ -189,6 +208,7 @@ model LoteCampania {
   loteId                  String   @map("lote_id")
   campaniaId              String   @map("campania_id")
   cultivoId               String   @map("cultivo_id")
+  variedadId              String?  @map("variedad_id")
   superficieSembradaHa    Decimal  @map("superficie_sembrada_ha") @db.Decimal(12, 4)
   fechaSiembra            DateTime? @map("fecha_siembra") @db.Date
   rindeEstimadoQqHa       Decimal? @map("rinde_estimado_qq_ha") @db.Decimal(10, 4)
@@ -202,6 +222,7 @@ model LoteCampania {
   lote              Lote             @relation(fields: [loteId], references: [id])
   campania          Campania         @relation(fields: [campaniaId], references: [id])
   cultivo           Cultivo          @relation(fields: [cultivoId], references: [id])
+  variedad          Variedad?        @relation(fields: [variedadId], references: [id])
   labores           Labor[]
   insumosAplicados  InsumoAplicado[]
 

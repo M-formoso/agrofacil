@@ -23,7 +23,7 @@ export class CalculosService {
     const lc = await this.prisma.loteCampania.findFirst({
       where: { id: loteCampaniaId, cuentaId },
       include: {
-        lote: { include: { establecimiento: { select: { id: true, nombre: true } } } },
+        lote: { include: { establecimiento: true } },
         cultivo: true,
         campania: true,
         labores: { where: { activo: true } },
@@ -31,14 +31,14 @@ export class CalculosService {
       },
     });
     if (!lc) throw new NotFoundException(`LoteCampania ${loteCampaniaId} no encontrado`);
-    return this.computarResultado(lc);
+    return this.computarResultado(this.aplicarFallbackArrendamiento(lc));
   }
 
   async agregarPorCultivo(cuentaId: string, campaniaId: string) {
     const lcs = await this.prisma.loteCampania.findMany({
       where: { cuentaId, campaniaId, activo: true },
       include: {
-        lote: true,
+        lote: { include: { establecimiento: true } },
         cultivo: true,
         labores: { where: { activo: true } },
         insumosAplicados: { where: { activo: true } },
@@ -46,7 +46,10 @@ export class CalculosService {
     });
     if (lcs.length === 0) return [];
 
-    const resultados = lcs.map((lc) => ({ lc, resultado: this.computarResultado(lc) }));
+    const resultados = lcs.map((lc) => {
+      const conFallback = this.aplicarFallbackArrendamiento(lc);
+      return { lc: conFallback, resultado: this.computarResultado(conFallback) };
+    });
 
     const porCultivo = new Map<
       string,
@@ -102,7 +105,7 @@ export class CalculosService {
     const lcs = await this.prisma.loteCampania.findMany({
       where: { cuentaId, campaniaId, activo: true },
       include: {
-        lote: true,
+        lote: { include: { establecimiento: true } },
         cultivo: true,
         labores: { where: { activo: true } },
         insumosAplicados: { where: { activo: true } },
@@ -116,7 +119,7 @@ export class CalculosService {
     let algunoProyectado = false;
 
     for (const lc of lcs) {
-      const r = this.computarResultado(lc);
+      const r = this.computarResultado(this.aplicarFallbackArrendamiento(lc));
       superficieHa = superficieHa.plus(r._raw.superficieHa);
       ingresoBruto = ingresoBruto.plus(r._raw.ingresoBruto);
       costoTotal = costoTotal.plus(r._raw.costoTotal);
@@ -249,6 +252,43 @@ export class CalculosService {
         margenNeto,
       },
     };
+  }
+
+  /** Si el lote no tiene arrendamiento definido pero el establecimiento sí
+   *  (campo arrendado/mixto), heredamos esos valores. La tenencia del lote
+   *  también puede heredarse si está sin definir. */
+  aplicarFallbackArrendamiento<T extends {
+    lote: {
+      tenencia?: 'propio' | 'arrendado' | 'mixto' | null;
+      arrendamientoValor?: { toString: () => string } | null;
+      arrendamientoUnidad?: 'qq_ha' | 'usd_ha' | 'pct_produccion' | null;
+      establecimiento?: {
+        tenencia?: 'propio' | 'arrendado' | 'mixto' | null;
+        arrendamientoValor?: { toString: () => string } | null;
+        arrendamientoUnidad?: 'qq_ha' | 'usd_ha' | 'pct_produccion' | null;
+      } | null;
+    };
+  }>(lc: T): T {
+    const lote = lc.lote;
+    const est = lote.establecimiento;
+    if (!est) return lc;
+
+    const loteSinTenencia = !lote.tenencia;
+    const loteSinArrendamiento = lote.arrendamientoValor === null || lote.arrendamientoValor === undefined;
+    const estArrendado = est.tenencia === 'arrendado' || est.tenencia === 'mixto';
+
+    if (estArrendado && (loteSinTenencia || loteSinArrendamiento)) {
+      return {
+        ...lc,
+        lote: {
+          ...lote,
+          tenencia: lote.tenencia ?? est.tenencia ?? null,
+          arrendamientoValor: lote.arrendamientoValor ?? est.arrendamientoValor ?? null,
+          arrendamientoUnidad: lote.arrendamientoUnidad ?? est.arrendamientoUnidad ?? null,
+        },
+      };
+    }
+    return lc;
   }
 
   calcularArrendamiento(p: {
