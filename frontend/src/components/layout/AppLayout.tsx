@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { CommandPalette } from './CommandPalette';
+import { OfflineIndicator } from './OfflineIndicator';
 
 export function AppLayout() {
   const location = useLocation();
@@ -28,6 +29,7 @@ export function AppLayout() {
         </main>
       </div>
       <CommandPalette />
+      <OfflineIndicator />
     </div>
   );
 }
