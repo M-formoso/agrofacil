@@ -7,20 +7,43 @@ export const crearLoteCampaniaSchema = z.object({
   loteId: z.string().uuid('loteId inválido'),
   campaniaId: z.string().uuid('campaniaId inválido'),
   cultivoId: z.string().uuid('cultivoId inválido'),
-  superficieSembradaHa: z.coerce.number().positive('Debe ser > 0'),
+  superficieSembradaHa: z.coerce.number().positive('Debe ser > 0').max(100000, 'Superficie inusualmente alta'),
   fechaSiembra: fechaIso.optional(),
-  rindeEstimadoQqHa: z.coerce.number().nonnegative().optional(),
-  precioGranoUsdTn: z.coerce.number().positive().optional(),
+  rindeEstimadoQqHa: z.coerce
+    .number()
+    .nonnegative()
+    .max(1000, 'Rinde inusualmente alto — recordá que la unidad es qq/ha')
+    .optional(),
+  precioGranoUsdTn: z.coerce
+    .number()
+    .positive()
+    .max(5000, 'Precio inusualmente alto — la unidad es USD por TONELADA, no por quintal')
+    .optional(),
 });
 export class CrearLoteCampaniaDto extends createZodDto(crearLoteCampaniaSchema) {}
 
 export const actualizarLoteCampaniaSchema = z.object({
   cultivoId: z.string().uuid().optional(),
-  superficieSembradaHa: z.coerce.number().positive().optional(),
+  superficieSembradaHa: z.coerce.number().positive().max(100000).optional(),
   fechaSiembra: fechaIso.nullable().optional(),
-  rindeEstimadoQqHa: z.coerce.number().nonnegative().nullable().optional(),
-  rindeRealQqHa: z.coerce.number().nonnegative().nullable().optional(),
-  precioGranoUsdTn: z.coerce.number().positive().nullable().optional(),
+  rindeEstimadoQqHa: z.coerce
+    .number()
+    .nonnegative()
+    .max(1000, 'Rinde inusualmente alto — la unidad es qq/ha')
+    .nullable()
+    .optional(),
+  rindeRealQqHa: z.coerce
+    .number()
+    .nonnegative()
+    .max(1000, 'Rinde inusualmente alto — la unidad es qq/ha')
+    .nullable()
+    .optional(),
+  precioGranoUsdTn: z.coerce
+    .number()
+    .positive()
+    .max(5000, 'Precio inusualmente alto — la unidad es USD por tonelada')
+    .nullable()
+    .optional(),
   fechaCosecha: fechaIso.nullable().optional(),
 });
 export class ActualizarLoteCampaniaDto extends createZodDto(actualizarLoteCampaniaSchema) {}
