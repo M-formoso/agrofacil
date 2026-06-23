@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
-  ArrowLeft, Plus, Trash2, Loader2, Sprout, Beaker, ClipboardList, Tractor as TractorIcon,
+  ArrowLeft, Plus, Trash2, Loader2, Sprout, Beaker, ClipboardList, Tractor as TractorIcon, Pencil,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -55,6 +55,7 @@ export function LoteCampaniaDetallePage() {
   const qc = useQueryClient();
   const [tab, setTab] = useState<'resultado' | 'labores' | 'insumos'>('resultado');
   const [creating, setCreating] = useState<'labor' | 'insumo' | null>(null);
+  const [editandoDatos, setEditandoDatos] = useState(false);
 
   const { data: lc, isLoading } = useQuery({
     queryKey: ['lote-campania', id],
@@ -115,7 +116,16 @@ export function LoteCampaniaDetallePage() {
           <p className="text-[11px] uppercase tracking-widest text-white/75 font-medium">
             {lc.campania?.nombre} · {lc.lote?.establecimiento?.nombre}
           </p>
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-white mt-1">{lc.lote?.nombre}</h1>
+          <div className="flex items-center justify-between gap-2 mt-1">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-white">{lc.lote?.nombre}</h1>
+            <button
+              onClick={() => setEditandoDatos(true)}
+              className="h-9 px-3 rounded-md bg-white/15 hover:bg-white/25 text-white text-xs font-medium inline-flex items-center gap-1.5 backdrop-blur-sm transition shrink-0"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              Editar datos
+            </button>
+          </div>
           <p className="text-xs sm:text-sm text-white/85 mt-1 capitalize">
             {lc.cultivo?.nombre} · {formatearHa(lc.superficieSembradaHa)}
             {lc.fechaSiembra && ` · sembrado el ${formatearFecha(lc.fechaSiembra)}`}
@@ -276,6 +286,19 @@ export function LoteCampaniaDetallePage() {
         open={creating === 'insumo'}
         loteCampaniaId={id!}
         onClose={() => setCreating(null)}
+      />
+      <EditarDatosSheet
+        open={editandoDatos}
+        loteCampaniaId={id!}
+        valores={{
+          superficieSembradaHa: Number(lc.superficieSembradaHa),
+          fechaSiembra: lc.fechaSiembra?.slice(0, 10) ?? null,
+          rindeEstimadoQqHa: lc.rindeEstimadoQqHa ? Number(lc.rindeEstimadoQqHa) : null,
+          rindeRealQqHa: lc.rindeRealQqHa ? Number(lc.rindeRealQqHa) : null,
+          precioGranoUsdTn: lc.precioGranoUsdTn ? Number(lc.precioGranoUsdTn) : null,
+          fechaCosecha: lc.fechaCosecha?.slice(0, 10) ?? null,
+        }}
+        onClose={() => setEditandoDatos(false)}
       />
     </div>
   );
@@ -656,6 +679,180 @@ function InsumoSheet({ open, loteCampaniaId, onClose }: { open: boolean; loteCam
           <Button type="submit" disabled={mutation.isPending}>
             {mutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
             Registrar
+          </Button>
+        </div>
+      </form>
+    </Sheet>
+  );
+}
+
+// ============================================================
+// Editar datos del lote-campaña (rinde, precio, fechas)
+// ============================================================
+const editarDatosSchema = z.object({
+  superficieSembradaHa: z.coerce.number().positive('Debe ser > 0').max(100000),
+  fechaSiembra: z.string().optional().or(z.literal('')),
+  rindeEstimadoQqHa: z.coerce
+    .number()
+    .nonnegative()
+    .max(1000, 'Inusualmente alto — la unidad es qq/ha')
+    .optional()
+    .or(z.literal('').transform(() => undefined)),
+  rindeRealQqHa: z.coerce
+    .number()
+    .nonnegative()
+    .max(1000, 'Inusualmente alto — la unidad es qq/ha')
+    .optional()
+    .or(z.literal('').transform(() => undefined)),
+  precioGranoUsdTn: z.coerce
+    .number()
+    .positive()
+    .max(5000, 'Inusualmente alto — la unidad es USD por TONELADA, no por quintal')
+    .optional()
+    .or(z.literal('').transform(() => undefined)),
+  fechaCosecha: z.string().optional().or(z.literal('')),
+});
+type EditarDatosInput = z.input<typeof editarDatosSchema>;
+type EditarDatosForm = z.output<typeof editarDatosSchema>;
+
+interface ValoresIniciales {
+  superficieSembradaHa: number;
+  fechaSiembra: string | null;
+  rindeEstimadoQqHa: number | null;
+  rindeRealQqHa: number | null;
+  precioGranoUsdTn: number | null;
+  fechaCosecha: string | null;
+}
+
+function EditarDatosSheet({
+  open,
+  loteCampaniaId,
+  valores,
+  onClose,
+}: {
+  open: boolean;
+  loteCampaniaId: string;
+  valores: ValoresIniciales;
+  onClose: () => void;
+}) {
+  const qc = useQueryClient();
+
+  const { register, handleSubmit, watch, formState: { errors } } = useForm<EditarDatosInput, unknown, EditarDatosForm>({
+    resolver: zodResolver(editarDatosSchema),
+    values: {
+      superficieSembradaHa: valores.superficieSembradaHa,
+      fechaSiembra: valores.fechaSiembra ?? '',
+      rindeEstimadoQqHa: valores.rindeEstimadoQqHa ?? undefined,
+      rindeRealQqHa: valores.rindeRealQqHa ?? undefined,
+      precioGranoUsdTn: valores.precioGranoUsdTn ?? undefined,
+      fechaCosecha: valores.fechaCosecha ?? '',
+    },
+  });
+
+  const precioObs = Number(watch('precioGranoUsdTn') ?? 0) || 0;
+  const rindeEstObs = Number(watch('rindeEstimadoQqHa') ?? 0) || 0;
+  const supObs = Number(watch('superficieSembradaHa') ?? 0) || 0;
+  const ingresoEstimado = (rindeEstObs * supObs / 10) * precioObs;
+  const precioInusual = precioObs > 1000;
+
+  const mutation = useMutation({
+    mutationFn: (data: EditarDatosForm) =>
+      lotesCampaniaService.actualizar(loteCampaniaId, {
+        superficieSembradaHa: data.superficieSembradaHa,
+        fechaSiembra: data.fechaSiembra || null,
+        rindeEstimadoQqHa: data.rindeEstimadoQqHa ?? null,
+        rindeRealQqHa: data.rindeRealQqHa ?? null,
+        precioGranoUsdTn: data.precioGranoUsdTn ?? null,
+        fechaCosecha: data.fechaCosecha || null,
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['lote-campania', loteCampaniaId] });
+      qc.invalidateQueries({ queryKey: ['resultado', loteCampaniaId] });
+      qc.invalidateQueries({ queryKey: ['lotes-campania'] });
+      toast.success('Datos actualizados');
+      onClose();
+    },
+    onError: (err) => toast.error(extraerMensajeError(err)),
+  });
+
+  return (
+    <Sheet
+      open={open}
+      onOpenChange={(o) => !o && onClose()}
+      title="Editar datos del lote en la campaña"
+      description="Modificá superficie, fechas, rinde o precio. El resultado se recalcula automáticamente."
+    >
+      <form onSubmit={handleSubmit((d) => mutation.mutate(d))} className="space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <Label htmlFor="sup">Superficie sembrada (ha) *</Label>
+            <Input id="sup" type="number" step="0.01" min="0"
+              {...register('superficieSembradaHa', { setValueAs: (v) => (v === '' ? 0 : Number(v)) })} />
+            {errors.superficieSembradaHa && <p className="text-xs text-destructive">{errors.superficieSembradaHa.message}</p>}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="fs">Fecha siembra</Label>
+            <Input id="fs" type="date" {...register('fechaSiembra')} />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <Label htmlFor="re">Rinde estimado (qq/ha)</Label>
+            <Input id="re" type="number" step="0.1" min="0" placeholder="Ej: 38"
+              {...register('rindeEstimadoQqHa', { setValueAs: (v) => (v === '' ? undefined : Number(v)) })} />
+            {errors.rindeEstimadoQqHa && <p className="text-xs text-destructive">{errors.rindeEstimadoQqHa.message}</p>}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="rr">Rinde real (qq/ha)</Label>
+            <Input id="rr" type="number" step="0.1" min="0" placeholder="Si ya cosechaste"
+              {...register('rindeRealQqHa', { setValueAs: (v) => (v === '' ? undefined : Number(v)) })} />
+            {errors.rindeRealQqHa && <p className="text-xs text-destructive">{errors.rindeRealQqHa.message}</p>}
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="p">Precio del grano (USD por tonelada)</Label>
+          <div className="relative">
+            <Input id="p" type="number" step="0.01" min="0" placeholder="Ej: soja 320, maíz 220, trigo 250"
+              className="pr-16"
+              {...register('precioGranoUsdTn', { setValueAs: (v) => (v === '' ? undefined : Number(v)) })} />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium">USD/tn</span>
+          </div>
+          {errors.precioGranoUsdTn && <p className="text-xs text-destructive">{errors.precioGranoUsdTn.message}</p>}
+          {precioInusual && !errors.precioGranoUsdTn && (
+            <p className="text-xs text-warning bg-warning/5 border border-warning/30 rounded px-2 py-1.5">
+              ⚠️ <strong>{precioObs.toLocaleString('es-AR')} USD/tn</strong> es muy alto. Los granos suelen estar entre 100 y 500 USD/tn.
+              {' '}¿Quizás querías ingresar el precio en pesos o por quintal?
+            </p>
+          )}
+          <p className="text-[11px] text-muted-foreground">
+            Referencia 2026: soja ~280–350, maíz ~180–260, trigo ~220–280, girasol ~320–400.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="fc">Fecha cosecha</Label>
+          <Input id="fc" type="date" {...register('fechaCosecha')} />
+        </div>
+
+        {ingresoEstimado > 0 && (
+          <div className="rounded-lg bg-primary/5 border border-primary/20 p-3">
+            <p className="text-[11px] uppercase tracking-wider text-primary font-semibold">Ingreso bruto estimado</p>
+            <p className="display-number text-2xl text-foreground mt-0.5 tabular-nums">
+              USD {ingresoEstimado.toLocaleString('es-AR', { maximumFractionDigits: 0 })}
+            </p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              {(rindeEstObs * supObs / 10).toFixed(1)} tn × USD {precioObs.toLocaleString('es-AR')}/tn
+            </p>
+          </div>
+        )}
+
+        <div className="flex justify-end gap-2 border-t border-border pt-4 mt-4">
+          <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
+          <Button type="submit" disabled={mutation.isPending}>
+            {mutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+            Guardar
           </Button>
         </div>
       </form>
