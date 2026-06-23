@@ -1,6 +1,6 @@
 import {
   Home, Tractor, Sprout, CalendarRange, ClipboardList,
-  Beaker, BarChart3, Wheat, type LucideIcon,
+  Beaker, BarChart3, Wheat, CloudRain, type LucideIcon,
 } from 'lucide-react';
 
 export interface NavItem {
@@ -16,6 +16,7 @@ export const navItems: NavItem[] = [
   { to: '/lotes',             label: 'Lotes',            icon: Sprout,       keywords: ['parcela', 'potrero'] },
   { to: '/campanias',         label: 'Campañas',         icon: CalendarRange, keywords: ['fina', 'gruesa'] },
   { to: '/carga',             label: 'Carga',            icon: ClipboardList, keywords: ['labores', 'insumos', 'voz', 'foto'] },
+  { to: '/lluvias',           label: 'Lluvias',          icon: CloudRain,     keywords: ['mm', 'agua', 'clima', 'calendario'] },
   { to: '/cultivos',          label: 'Cultivos',         icon: Wheat,         keywords: ['catalogo'] },
   { to: '/insumos',           label: 'Insumos',          icon: Beaker,        keywords: ['fertilizante', 'herbicida'] },
   { to: '/resumen',           label: 'Resumen',          icon: BarChart3,     keywords: ['resultado', 'margen', 'punto eq'] },

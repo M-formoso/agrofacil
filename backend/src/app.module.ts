@@ -16,6 +16,7 @@ import { LotesCampaniaModule } from './modules/lotes-campania/lotes-campania.mod
 import { LaboresModule } from './modules/labores/labores.module';
 import { InsumosAplicadosModule } from './modules/insumos-aplicados/insumos-aplicados.module';
 import { CalculosModule } from './modules/calculos/calculos.module';
+import { LluviasModule } from './modules/lluvias/lluvias.module';
 import { HealthModule } from './modules/health/health.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
@@ -48,6 +49,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     LaboresModule,
     InsumosAplicadosModule,
     CalculosModule,
+    LluviasModule,
   ],
   providers: [
     { provide: APP_PIPE, useClass: ZodValidationPipe },

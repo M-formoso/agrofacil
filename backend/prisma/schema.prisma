@@ -82,6 +82,7 @@ model Establecimiento {
 
   cuenta              Cuenta   @relation(fields: [cuentaId], references: [id])
   lotes               Lote[]
+  registrosLluvia     RegistroLluvia[]
 
   @@index([cuentaId])
   @@map("establecimientos")
@@ -218,6 +219,28 @@ model Labor {
   @@index([cuentaId])
   @@index([loteCampaniaId])
   @@map("labores")
+}
+
+// ============================================================
+// Registro de lluvias
+// ============================================================
+
+model RegistroLluvia {
+  id                String           @id @default(uuid())
+  cuentaId          String           @map("cuenta_id")
+  establecimientoId String?          @map("establecimiento_id")
+  fecha             DateTime         @db.Date
+  mm                Decimal          @db.Decimal(8, 2)
+  nota              String?
+  activo            Boolean          @default(true)
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+
+  establecimiento   Establecimiento? @relation(fields: [establecimientoId], references: [id])
+
+  @@index([cuentaId, fecha])
+  @@index([establecimientoId])
+  @@map("registros_lluvia")
 }
 
 model InsumoAplicado {
