@@ -62,7 +62,7 @@ export function AsistentePage() {
   }, [conversaciones, conversacionId]);
 
   return (
-    <div className="flex flex-col lg:flex-row gap-4 h-[calc(100vh-8rem)] lg:h-[calc(100vh-10rem)]">
+    <div className="flex flex-col lg:flex-row gap-4 flex-1 min-h-0">
       {/* Sidebar de conversaciones */}
       <aside className="lg:w-72 shrink-0 bg-surface border border-border rounded-2xl flex flex-col overflow-hidden">
         <div className="p-3 border-b border-border">
