@@ -14,6 +14,18 @@ datasource db {
 // Auth & tenancy
 // ============================================================
 
+enum RolGlobal {
+  superadmin
+  ingeniero
+  propietario
+}
+
+enum RolEnCuenta {
+  ingeniero      // control total: carga, edita, configura
+  propietario    // lectura + comentarios + ediciones menores en sus datos
+  operador       // carga datos pero no edita catálogos
+}
+
 model Cuenta {
   id           String   @id @default(uuid())
   nombre       String
@@ -25,6 +37,7 @@ model Cuenta {
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   usuarios         Usuario[]
+  membresias       UsuarioCuenta[]
   establecimientos Establecimiento[]
   campanias        Campania[]
 
@@ -33,20 +46,46 @@ model Cuenta {
 
 model Usuario {
   id           String    @id @default(uuid())
+  /// LEGACY: la cuenta "casa" del usuario. Para ingenieros se mantiene como
+  /// su cuenta default, pero el acceso real viene de las membresías.
+  /// A futuro vamos a eliminar esta columna cuando todo el código use UsuarioCuenta.
   cuentaId     String    @map("cuenta_id")
   email        String    @unique
   passwordHash String    @map("password_hash")
   nombre       String
+  rolGlobal    RolGlobal @default(ingeniero) @map("rol_global")
   activo       Boolean   @default(true)
   ultimoLogin  DateTime? @map("ultimo_login")
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
   cuenta       Cuenta    @relation(fields: [cuentaId], references: [id])
+  membresias   UsuarioCuenta[]
   conversaciones Conversacion[]
 
   @@index([cuentaId])
   @@map("usuarios")
+}
+
+/// Many-to-many entre Usuario y Cuenta. Permite que un ingeniero atienda
+/// varias cuentas (varios productores) y que cada cuenta tenga sus propietarios.
+/// El rol se define POR CUENTA, no globalmente — un usuario puede ser
+/// ingeniero en una cuenta y propietario en otra (poco probable, pero posible).
+model UsuarioCuenta {
+  id        String      @id @default(uuid())
+  usuarioId String      @map("usuario_id")
+  cuentaId  String      @map("cuenta_id")
+  rol       RolEnCuenta
+  activo    Boolean     @default(true)
+  createdAt DateTime    @default(now()) @map("created_at")
+
+  usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  cuenta    Cuenta  @relation(fields: [cuentaId], references: [id], onDelete: Cascade)
+
+  @@unique([usuarioId, cuentaId])
+  @@index([usuarioId])
+  @@index([cuentaId])
+  @@map("usuarios_cuentas")
 }
 
 // ============================================================

@@ -9,6 +9,7 @@ import { ZodValidationPipe } from 'nestjs-zod';
 import configuration from './config/configuration';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { PropietariosModule } from './modules/propietarios/propietarios.module';
 import { CultivosModule } from './modules/cultivos/cultivos.module';
 import { VariedadesModule } from './modules/variedades/variedades.module';
 import { EstablecimientosModule } from './modules/establecimientos/establecimientos.module';
@@ -46,6 +47,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     PrismaModule,
     HealthModule,
     AuthModule,
+    PropietariosModule,
     CultivosModule,
     VariedadesModule,
     EstablecimientosModule,

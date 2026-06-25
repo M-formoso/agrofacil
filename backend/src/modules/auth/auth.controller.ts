@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Patch, Post, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import {
   ActualizarPerfilDto,
@@ -54,5 +54,13 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   cambiarPassword(@Usuario() user: UsuarioActual, @Body() dto: CambiarPasswordDto) {
     return this.service.cambiarPassword(user.id, dto.passwordActual, dto.passwordNueva);
+  }
+
+  /** Cambiar la cuenta activa (solo ingenieros con múltiples cuentas). */
+  @UseGuards(JwtAuthGuard)
+  @Post('switch-cuenta/:id')
+  @HttpCode(HttpStatus.OK)
+  switchCuenta(@Usuario() user: UsuarioActual, @Param('id', ParseUUIDPipe) cuentaId: string) {
+    return this.service.switchCuenta(user.id, cuentaId);
   }
 }

@@ -1,6 +1,7 @@
-import { BadRequestException, ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { RolEnCuenta, type Usuario, type UsuarioCuenta, type Cuenta } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { UsuarioActual } from '../../common/types/usuario-actual';
@@ -15,8 +16,12 @@ export interface TokensResponse {
 interface JwtPayload {
   sub: string;
   email: string;
-  cuentaId: string;
+  cuentaActivaId: string;
 }
+
+type UsuarioConMembresias = Usuario & {
+  membresias: (UsuarioCuenta & { cuenta: { id: string; nombre: string } })[];
+};
 
 @Injectable()
 export class AuthService {
@@ -27,16 +32,13 @@ export class AuthService {
   ) {}
 
   async login(email: string, password: string): Promise<TokensResponse> {
-    const usuario = await this.prisma.usuario.findUnique({
-      where: { email },
-      include: { cuenta: true },
-    });
+    const usuario = await this.cargarUsuarioConMembresias({ email });
 
     if (!usuario || !usuario.activo) {
       throw new UnauthorizedException('Credenciales inválidas');
     }
-    if (usuario.cuenta && !usuario.cuenta.activo) {
-      throw new UnauthorizedException('Cuenta inactiva');
+    if (usuario.membresias.length === 0) {
+      throw new UnauthorizedException('Tu usuario no tiene cuentas asignadas — pedile al ingeniero que te dé acceso');
     }
 
     const passwordOk = await bcrypt.compare(password, usuario.passwordHash);
@@ -47,12 +49,11 @@ export class AuthService {
       data: { ultimoLogin: new Date() },
     });
 
-    return this.generarTokens({
-      id: usuario.id,
-      email: usuario.email,
-      nombre: usuario.nombre,
-      cuentaId: usuario.cuentaId,
-    });
+    // Cuenta default: la legacy cuenta_id si tiene membresía activa, sino la primera
+    const cuentaInicial =
+      usuario.membresias.find((m) => m.cuentaId === usuario.cuentaId) ?? usuario.membresias[0];
+
+    return this.generarTokens(this.armarUsuarioActual(usuario, cuentaInicial.cuentaId));
   }
 
   async refresh(refreshToken: string): Promise<TokensResponse> {
@@ -65,17 +66,23 @@ export class AuthService {
       throw new UnauthorizedException('Refresh token inválido');
     }
 
-    const usuario = await this.prisma.usuario.findFirst({
-      where: { id: payload.sub, activo: true },
-    });
-    if (!usuario) throw new UnauthorizedException('Usuario no encontrado');
+    const usuario = await this.cargarUsuarioConMembresias({ id: payload.sub });
+    if (!usuario || !usuario.activo) throw new UnauthorizedException('Usuario no encontrado');
 
-    return this.generarTokens({
-      id: usuario.id,
-      email: usuario.email,
-      nombre: usuario.nombre,
-      cuentaId: usuario.cuentaId,
-    });
+    const membresia = usuario.membresias.find((m) => m.cuentaId === payload.cuentaActivaId);
+    if (!membresia) throw new UnauthorizedException('Sin acceso a esa cuenta');
+
+    return this.generarTokens(this.armarUsuarioActual(usuario, membresia.cuentaId));
+  }
+
+  async switchCuenta(usuarioId: string, nuevaCuentaId: string): Promise<TokensResponse> {
+    const usuario = await this.cargarUsuarioConMembresias({ id: usuarioId });
+    if (!usuario || !usuario.activo) throw new UnauthorizedException('Usuario no encontrado');
+
+    const membresia = usuario.membresias.find((m) => m.cuentaId === nuevaCuentaId);
+    if (!membresia) throw new ForbiddenException('No tenés acceso a esa cuenta');
+
+    return this.generarTokens(this.armarUsuarioActual(usuario, nuevaCuentaId));
   }
 
   async registrar(dto: RegistroDto): Promise<TokensResponse> {
@@ -84,7 +91,7 @@ export class AuthService {
     if (existente) throw new ConflictException('Ya existe un usuario con ese email');
 
     const passwordHash = await this.generarHash(dto.password);
-    const usuario = await this.prisma.$transaction(async (tx) => {
+    const { usuarioId, cuentaId } = await this.prisma.$transaction(async (tx) => {
       const cuenta = await tx.cuenta.create({
         data: {
           nombre: dto.nombreCuenta,
@@ -92,22 +99,28 @@ export class AuthService {
           telefono: dto.telefono,
         },
       });
-      return tx.usuario.create({
+      const u = await tx.usuario.create({
         data: {
           cuentaId: cuenta.id,
           email: emailLower,
           passwordHash,
           nombre: dto.nombre,
+          rolGlobal: 'ingeniero',
         },
       });
+      await tx.usuarioCuenta.create({
+        data: {
+          usuarioId: u.id,
+          cuentaId: cuenta.id,
+          rol: RolEnCuenta.ingeniero,
+        },
+      });
+      return { usuarioId: u.id, cuentaId: cuenta.id };
     });
 
-    return this.generarTokens({
-      id: usuario.id,
-      email: usuario.email,
-      nombre: usuario.nombre,
-      cuentaId: usuario.cuentaId,
-    });
+    const usuario = await this.cargarUsuarioConMembresias({ id: usuarioId });
+    if (!usuario) throw new UnauthorizedException('Registro falló');
+    return this.generarTokens(this.armarUsuarioActual(usuario, cuentaId));
   }
 
   async actualizarPerfil(usuarioId: string, dto: ActualizarPerfilDto) {
@@ -146,11 +159,47 @@ export class AuthService {
     return bcrypt.hash(password, 12);
   }
 
+  // ============================================================
+  // Helpers
+  // ============================================================
+
+  private async cargarUsuarioConMembresias(
+    where: { email: string } | { id: string },
+  ): Promise<UsuarioConMembresias | null> {
+    return this.prisma.usuario.findUnique({
+      where: where as { email: string },
+      include: {
+        membresias: {
+          where: { activo: true },
+          include: { cuenta: { select: { id: true, nombre: true, activo: true } } },
+        },
+      },
+    }) as Promise<UsuarioConMembresias | null>;
+  }
+
+  private armarUsuarioActual(usuario: UsuarioConMembresias, cuentaActivaId: string): UsuarioActual {
+    const activa = usuario.membresias.find((m) => m.cuentaId === cuentaActivaId);
+    if (!activa) throw new UnauthorizedException('Sin acceso a esa cuenta');
+    return {
+      id: usuario.id,
+      email: usuario.email,
+      nombre: usuario.nombre,
+      rolGlobal: usuario.rolGlobal,
+      cuentaId: activa.cuentaId,
+      rolEnCuentaActiva: activa.rol,
+      membresias: usuario.membresias.map((m) => ({
+        cuentaId: m.cuentaId,
+        cuentaNombre: m.cuenta.nombre,
+        rol: m.rol,
+      })),
+    };
+  }
+
   private async generarTokens(usuario: UsuarioActual): Promise<TokensResponse> {
     const payload: JwtPayload = {
       sub: usuario.id,
       email: usuario.email,
-      cuentaId: usuario.cuentaId,
+      cuentaActivaId: usuario.cuentaId,
     };
     const accessExpiresIn = (this.config.get<string>('jwt.accessExpiresIn') ?? '30m') as `${number}${'s' | 'm' | 'h' | 'd'}`;
     const refreshExpiresIn = (this.config.get<string>('jwt.refreshExpiresIn') ?? '7d') as `${number}${'s' | 'm' | 'h' | 'd'}`;
@@ -159,3 +208,5 @@ export class AuthService {
     return { accessToken, refreshToken, usuario };
   }
 }
+// type-import only re-exported to satisfy linter (Cuenta usado en type)
+export type { Cuenta };
