@@ -23,6 +23,7 @@ import { lotesCampaniaService } from '@/services/lotesCampaniaService';
 import { calculosService } from '@/services/calculosService';
 import { laboresService } from '@/services/laboresService';
 import { insumosAplicadosService } from '@/services/insumosAplicadosService';
+import { insumosService } from '@/services/insumosService';
 import { extraerMensajeError } from '@/lib/apiClient';
 import { formatearFecha, formatearHa, formatearQqHa, formatearUsd } from '@/utils/formatters';
 import { AnimatedNumber } from '@/components/charts/AnimatedNumber';
@@ -610,6 +611,7 @@ function LaborSheet({ open, loteCampaniaId, onClose }: { open: boolean; loteCamp
 // Insumo Sheet
 // ============================================================
 const insumoSchema = z.object({
+  insumoId: z.string().uuid().optional().nullable(),
   tipo: z.enum(['semilla', 'fertilizante', 'herbicida', 'insecticida', 'fungicida', 'otro']),
   producto: z.string().min(1, 'Requerido'),
   cantidad: z.coerce.number().positive(),
@@ -626,16 +628,44 @@ function InsumoSheet({ open, loteCampaniaId, onClose }: { open: boolean; loteCam
   const qc = useQueryClient();
   const { register, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<InsumoFormInput, unknown, InsumoForm>({
     resolver: zodResolver(insumoSchema),
-    defaultValues: { tipo: 'herbicida', unidad: 'lt' },
+    defaultValues: { tipo: 'herbicida', unidad: 'lt', insumoId: null },
   });
   const tipo = watch('tipo');
   const unidad = watch('unidad');
   const formaPago = watch('formaPago');
+  const insumoId = watch('insumoId');
+  const cantidad = watch('cantidad');
+
+  const { data: catalogo } = useQuery({
+    queryKey: ['insumos-catalogo'],
+    queryFn: () => insumosService.listar(),
+    enabled: open,
+  });
+
+  const insumoSeleccionado = catalogo?.find((i) => i.id === insumoId);
+  const stockDisp = insumoSeleccionado ? Number(insumoSeleccionado.stockActual) : null;
+  const excedeStock = stockDisp !== null && Number(cantidad ?? 0) > stockDisp;
+
+  const aplicarDesdeCatalogo = (id: string) => {
+    const i = catalogo?.find((x) => x.id === id);
+    if (!i) {
+      setValue('insumoId', null);
+      return;
+    }
+    setValue('insumoId', i.id);
+    setValue('tipo', i.tipo);
+    setValue('producto', i.nombre);
+    setValue('unidad', i.unidad);
+    if (i.costoUnitarioUsd && cantidad) {
+      setValue('costoTotalUsd', Number(i.costoUnitarioUsd) * Number(cantidad));
+    }
+  };
 
   const mutation = useMutation({
     mutationFn: (data: InsumoForm) =>
       insumosAplicadosService.crear({
         loteCampaniaId,
+        insumoId: data.insumoId ?? undefined,
         tipo: data.tipo as TipoInsumo,
         producto: data.producto,
         cantidad: data.cantidad,
@@ -646,8 +676,10 @@ function InsumoSheet({ open, loteCampaniaId, onClose }: { open: boolean; loteCam
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['lote-campania', loteCampaniaId] });
       qc.invalidateQueries({ queryKey: ['resultado', loteCampaniaId] });
+      qc.invalidateQueries({ queryKey: ['insumos-catalogo'] });
+      qc.invalidateQueries({ queryKey: ['alertas-conteo'] });
       toast.success('Insumo registrado');
-      reset({ tipo: 'herbicida', unidad: 'lt' });
+      reset({ tipo: 'herbicida', unidad: 'lt', insumoId: null });
       onClose();
     },
     onError: (err) => toast.error(extraerMensajeError(err)),
@@ -656,6 +688,38 @@ function InsumoSheet({ open, loteCampaniaId, onClose }: { open: boolean; loteCam
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()} title="Nuevo insumo aplicado">
       <form onSubmit={handleSubmit((d) => mutation.mutate(d))} className="space-y-4">
+        {/* Selector del catálogo */}
+        {catalogo && catalogo.length > 0 && (
+          <div className="space-y-2">
+            <Label htmlFor="insumo-cat">
+              Insumo del catálogo{' '}
+              <span className="text-xs text-muted-foreground font-normal">(opcional — descuenta stock)</span>
+            </Label>
+            <select
+              id="insumo-cat"
+              value={insumoId ?? ''}
+              onChange={(e) => aplicarDesdeCatalogo(e.target.value)}
+              className="w-full h-10 px-3 rounded-md border border-border bg-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            >
+              <option value="">— Cargar manual (sin descontar stock) —</option>
+              {catalogo.map((i) => (
+                <option key={i.id} value={i.id}>
+                  {i.nombre} ({Number(i.stockActual).toLocaleString('es-AR')} {i.unidad} disp.)
+                </option>
+              ))}
+            </select>
+            {insumoSeleccionado && (
+              <p className={cn(
+                'text-xs',
+                excedeStock ? 'text-destructive font-medium' : 'text-muted-foreground',
+              )}>
+                {excedeStock
+                  ? `⚠ La cantidad supera el stock disponible (${stockDisp} ${insumoSeleccionado.unidad})`
+                  : `Stock disponible: ${stockDisp} ${insumoSeleccionado.unidad}`}
+              </p>
+            )}
+          </div>
+        )}
         <div className="space-y-2">
           <Label>Tipo</Label>
           <div className="flex flex-wrap gap-2">

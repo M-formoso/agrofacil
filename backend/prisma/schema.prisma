@@ -309,6 +309,36 @@ enum TipoInsumo {
   otro
 }
 
+/// Catálogo de insumos de la cuenta con stock. Cada insumo aplicado en
+/// un lote-campaña puede (opcionalmente) referenciar uno de éstos, lo
+/// que descuenta su stock automáticamente. Si stockActual cae al o por
+/// debajo de stockMinimo, se dispara una alerta de stock bajo.
+model Insumo {
+  id                 String     @id @default(uuid())
+  cuentaId           String     @map("cuenta_id")
+  nombre             String
+  tipo               TipoInsumo
+  /// Unidad de medida del stock: 'lt' | 'kg' | 'bolsa' | 'unidad' | 'gr/ha' — string libre.
+  unidad             String
+  stockActual        Decimal    @default(0) @map("stock_actual") @db.Decimal(14, 4)
+  /// Umbral mínimo. Si stockActual <= stockMinimo, se considera stock bajo.
+  stockMinimo        Decimal    @default(0) @map("stock_minimo") @db.Decimal(14, 4)
+  /// Costo de referencia por unidad. Permite proponer un costo cuando
+  /// se aplica el insumo, pero no es obligatorio usarlo.
+  costoUnitarioUsd   Decimal?   @map("costo_unitario_usd") @db.Decimal(14, 4)
+  proveedor          String?
+  nota               String?    @db.Text
+  activo             Boolean    @default(true)
+  createdAt          DateTime   @default(now()) @map("created_at")
+  updatedAt          DateTime   @updatedAt @map("updated_at")
+
+  aplicaciones       InsumoAplicado[]
+
+  @@index([cuentaId])
+  @@index([cuentaId, nombre])
+  @@map("insumos")
+}
+
 model Labor {
   id              String     @id @default(uuid())
   cuentaId        String     @map("cuenta_id")
@@ -362,6 +392,9 @@ model InsumoAplicado {
   id              String     @id @default(uuid())
   cuentaId        String     @map("cuenta_id")
   loteCampaniaId  String     @map("lote_campania_id")
+  /// FK opcional al catálogo de insumos. Si tiene valor, al crear/editar
+  /// el aplicado se descuenta su stock; al eliminar se restaura.
+  insumoId        String?    @map("insumo_id")
   tipo            TipoInsumo
   producto        String
   cantidad        Decimal    @db.Decimal(12, 4)
@@ -373,9 +406,11 @@ model InsumoAplicado {
   updatedAt       DateTime   @updatedAt @map("updated_at")
 
   loteCampania    LoteCampania @relation(fields: [loteCampaniaId], references: [id])
+  insumo          Insumo?      @relation(fields: [insumoId], references: [id])
 
   @@index([cuentaId])
   @@index([loteCampaniaId])
+  @@index([insumoId])
   @@map("insumos_aplicados")
 }
 
@@ -517,6 +552,7 @@ enum TipoAlerta {
   agua         // déficit/exceso
   plaga        // detección manual o por monitoreo
   vencimiento  // labor sugerida, control programado
+  stock        // stock bajo en el catálogo de insumos
   general
 }
 

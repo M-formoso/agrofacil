@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Drawer } from 'vaul';
 import { NavLink } from 'react-router-dom';
 import { LogOut, Menu } from 'lucide-react';
-import { filtrarPorRol, navItems } from '@/constants/navigation';
+import { filtrarGruposPorRol, navGroups } from '@/constants/navigation';
 import { LogoLockup } from './Logo';
 import { AccountSwitcher } from './AccountSwitcher';
 import { useAuthStore } from '@/stores/authStore';
@@ -13,7 +13,7 @@ export function MobileDrawer() {
   const usuario = useAuthStore((s) => s.usuario);
   const logout = useAuthStore((s) => s.logout);
 
-  const items = filtrarPorRol(navItems, usuario?.rolEnCuentaActiva);
+  const grupos = filtrarGruposPorRol(navGroups, usuario?.rolEnCuentaActiva);
 
   return (
     <Drawer.Root open={open} onOpenChange={setOpen}>
@@ -40,23 +40,34 @@ export function MobileDrawer() {
             <AccountSwitcher variant="dark" />
           </div>
 
-          <nav className="px-3 pb-2 max-h-[60vh] overflow-y-auto">
-            {items.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.to === '/'}
-                onClick={() => setOpen(false)}
-                className={({ isActive }) =>
-                  cn(
-                    'flex items-center gap-3 px-3 py-3 rounded-lg text-sm',
-                    isActive ? 'bg-primary/10 text-primary font-medium' : 'text-foreground hover:bg-muted',
-                  )
-                }
-              >
-                <item.icon className="h-5 w-5" />
-                {item.label}
-              </NavLink>
+          <nav className="px-3 pb-2 max-h-[60vh] overflow-y-auto space-y-3">
+            {grupos.map((grupo) => (
+              <div key={grupo.id}>
+                {grupo.label && (
+                  <p className="px-2 pt-1.5 pb-1 text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">
+                    {grupo.label}
+                  </p>
+                )}
+                <div className="space-y-0.5">
+                  {grupo.items.map((item) => (
+                    <NavLink
+                      key={item.to}
+                      to={item.to}
+                      end={item.to === '/'}
+                      onClick={() => setOpen(false)}
+                      className={({ isActive }) =>
+                        cn(
+                          'flex items-center gap-3 px-3 py-3 rounded-lg text-sm',
+                          isActive ? 'bg-primary/10 text-primary font-medium' : 'text-foreground hover:bg-muted',
+                        )
+                      }
+                    >
+                      <item.icon className="h-5 w-5" />
+                      {item.label}
+                    </NavLink>
+                  ))}
+                </div>
+              </div>
             ))}
           </nav>
 

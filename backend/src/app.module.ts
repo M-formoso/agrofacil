@@ -26,6 +26,7 @@ import { AsistenteModule } from './modules/asistente/asistente.module';
 import { MonitoreosModule } from './modules/monitoreos/monitoreos.module';
 import { ReportesModule } from './modules/reportes/reportes.module';
 import { AlertasModule } from './modules/alertas/alertas.module';
+import { InsumosModule } from './modules/insumos/insumos.module';
 import { HealthModule } from './modules/health/health.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
@@ -77,6 +78,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     MonitoreosModule,
     ReportesModule,
     AlertasModule,
+    InsumosModule,
   ],
   providers: [
     { provide: APP_PIPE, useClass: ZodValidationPipe },
