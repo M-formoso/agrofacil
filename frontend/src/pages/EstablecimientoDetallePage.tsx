@@ -59,8 +59,11 @@ export function EstablecimientoDetallePage() {
     (l) => l.lotesCampania && l.lotesCampania.length > 0,
   ).length;
 
+  const tieneMapa = lat !== null && lon !== null;
+  const tieneArrendamiento = est.tenencia !== 'propio' && !!est.arrendamientoValor;
+
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto w-full space-y-6">
       <Link
         to="/establecimientos"
         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
@@ -91,21 +94,28 @@ export function EstablecimientoDetallePage() {
         </div>
       </header>
 
-      {/* Mapa (si tiene coords) */}
-      {lat !== null && lon !== null && (
-        <MapaReadonly lat={lat} lon={lon} height={260} />
-      )}
-
-      {/* Arrendamiento */}
-      {est.tenencia !== 'propio' && est.arrendamientoValor && (
-        <div className="rounded-xl border border-warning/30 bg-warning/5 p-4">
-          <p className="text-[10px] uppercase tracking-wider font-semibold text-warning">Arrendamiento del campo</p>
-          <p className="text-sm text-foreground mt-1">
-            <span className="font-semibold tabular-nums">
-              {Number(est.arrendamientoValor).toLocaleString('es-AR')}
-            </span>{' '}
-            <span className="text-muted-foreground">{labelUnidad(est.arrendamientoUnidad)}</span>
-          </p>
+      {/* Mapa + Arrendamiento — si están ambos van lado a lado, si solo uno ocupa todo. */}
+      {(tieneMapa || tieneArrendamiento) && (
+        <div className="grid grid-cols-12 gap-4 lg:gap-6">
+          {tieneMapa && (
+            <div className={cn(tieneArrendamiento ? 'col-span-12 lg:col-span-8' : 'col-span-12')}>
+              <MapaReadonly lat={lat!} lon={lon!} height={260} />
+            </div>
+          )}
+          {tieneArrendamiento && (
+            <div className={cn(
+              'rounded-xl border border-warning/30 bg-warning/5 p-4 flex flex-col justify-center',
+              tieneMapa ? 'col-span-12 lg:col-span-4' : 'col-span-12',
+            )}>
+              <p className="text-[10px] uppercase tracking-wider font-semibold text-warning">Arrendamiento del campo</p>
+              <p className="text-sm text-foreground mt-1">
+                <span className="font-semibold tabular-nums">
+                  {Number(est.arrendamientoValor).toLocaleString('es-AR')}
+                </span>{' '}
+                <span className="text-muted-foreground">{labelUnidad(est.arrendamientoUnidad)}</span>
+              </p>
+            </div>
+          )}
         </div>
       )}
 
@@ -127,7 +137,7 @@ export function EstablecimientoDetallePage() {
             <p className="text-sm text-muted-foreground mt-3">Sin lotes cargados todavía.</p>
           </div>
         ) : (
-          <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <ul className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
             {lotes.map((lote, i) => (
               <LoteCard
                 key={lote.id}

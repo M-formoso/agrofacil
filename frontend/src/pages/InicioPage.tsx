@@ -8,8 +8,8 @@ import { lotesCampaniaService } from '@/services/lotesCampaniaService';
 import { campaniasService } from '@/services/campaniasService';
 import { AnimatedNumber } from '@/components/charts/AnimatedNumber';
 import { Logo } from '@/components/layout/Logo';
+import { AlertasBadge } from '@/components/layout/AlertasBadge';
 import { useAuthStore } from '@/stores/authStore';
-import { cn } from '@/lib/utils';
 import { InicioPropietarioPage } from './InicioPropietarioPage';
 
 export function InicioPage() {
@@ -85,12 +85,15 @@ export function InicioPage() {
   return (
     <div className="flex-1 flex flex-col space-y-6 max-w-7xl w-full mx-auto">
       {/* Greeting */}
-      <motion.div {...item(0)} className="flex items-center justify-between">
+      <motion.div {...item(0)} className="flex items-center justify-between gap-3">
         <div>
           <p className="text-sm text-muted-foreground">Hola, {usuario?.nombre?.split(' ')[0]} 👋</p>
           <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">Tu vivero</h1>
         </div>
-        <Logo size={36} animated />
+        <div className="flex items-center gap-2">
+          <AlertasBadge variant="dark" />
+          <Logo size={36} animated />
+        </div>
       </motion.div>
 
       {/* Bento grid asimétrica — celdas más altas en desktop para ocupar el viewport */}
@@ -191,7 +194,7 @@ export function InicioPage() {
         {/* Distribución por cultivo */}
         <motion.div
           {...item(0.2)}
-          className="col-span-12 md:col-span-7 row-span-2 rounded-2xl bg-surface border border-border p-6 overflow-hidden"
+          className="col-span-12 row-span-2 rounded-2xl bg-surface border border-border p-6 overflow-hidden"
         >
           <div className="flex items-center justify-between mb-4">
             <div>
@@ -261,39 +264,6 @@ export function InicioPage() {
           )}
         </motion.div>
 
-        {/* Atajos */}
-        <motion.div
-          {...item(0.25)}
-          className="col-span-12 md:col-span-5 row-span-2 rounded-2xl bg-foreground text-background p-6 flex flex-col"
-        >
-          <h3 className="font-semibold">Atajos rápidos</h3>
-          <p className="text-xs text-background/65 mt-1">Usá <kbd className="bg-white/15 px-1 rounded text-[10px]">⌘K</kbd> para ir a cualquier lado</p>
-
-          <ul className="mt-4 space-y-2 flex-1">
-            {[
-              { to: '/establecimientos', label: 'Crear establecimiento', icon: Tractor },
-              { to: '/lotes', label: 'Cargar un lote nuevo', icon: Sprout },
-              { to: '/campanias', label: 'Abrir una campaña', icon: CalendarRange },
-              { to: '/carga', label: 'Registrar labor o insumo', icon: TrendingUp },
-            ].map((a) => (
-              <li key={a.to}>
-                <Link
-                  to={a.to}
-                  className={cn(
-                    'group flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg',
-                    'bg-white/5 hover:bg-white/10 transition',
-                  )}
-                >
-                  <span className="flex items-center gap-3">
-                    <a.icon className="h-4 w-4 text-background/75" />
-                    <span className="text-sm">{a.label}</span>
-                  </span>
-                  <ArrowRight className="h-4 w-4 text-background/40 group-hover:translate-x-0.5 transition-transform" />
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </motion.div>
       </div>
     </div>
   );

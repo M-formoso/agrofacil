@@ -33,8 +33,11 @@ export function LoteDetallePage() {
   const historial = lote.lotesCampania ?? [];
   const activa = historial[0] ?? null;
 
+  const tieneArrendamiento = lote.tenencia === 'arrendado' && !!lote.arrendamientoValor;
+  const tieneContenidoPrincipal = !!activa || historial.length === 0;
+
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto w-full space-y-6">
       <Link
         to={lote.establecimiento ? `/establecimientos/${lote.establecimiento.id}` : '/lotes'}
         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
@@ -66,22 +69,29 @@ export function LoteDetallePage() {
         </div>
       </header>
 
-      {/* Arrendamiento */}
-      {lote.tenencia === 'arrendado' && lote.arrendamientoValor && (
-        <div className="rounded-xl border border-warning/30 bg-warning/5 p-4">
-          <p className="text-[10px] uppercase tracking-wider font-semibold text-warning">Arrendamiento</p>
-          <p className="text-sm text-foreground mt-1">
-            <span className="font-semibold tabular-nums">
-              {Number(lote.arrendamientoValor).toLocaleString('es-AR')}
-            </span>{' '}
-            <span className="text-muted-foreground">{labelUnidad(lote.arrendamientoUnidad)}</span>
-          </p>
-        </div>
-      )}
+      {/* Bloque arrendamiento + principal: si hay ambos se dividen 4/8; si hay solo uno ocupa todo. */}
+      <div className="grid grid-cols-12 gap-4 lg:gap-6">
+        {tieneArrendamiento && (
+          <div className={cn(
+            'rounded-xl border border-warning/30 bg-warning/5 p-4',
+            tieneContenidoPrincipal ? 'col-span-12 md:col-span-4' : 'col-span-12',
+          )}>
+            <p className="text-[10px] uppercase tracking-wider font-semibold text-warning">Arrendamiento</p>
+            <p className="text-sm text-foreground mt-1">
+              <span className="font-semibold tabular-nums">
+                {Number(lote.arrendamientoValor).toLocaleString('es-AR')}
+              </span>{' '}
+              <span className="text-muted-foreground">{labelUnidad(lote.arrendamientoUnidad)}</span>
+            </p>
+          </div>
+        )}
 
       {/* Campaña activa — destacada arriba */}
       {activa && (
-        <section className="space-y-3">
+        <section className={cn(
+          'space-y-3',
+          tieneArrendamiento ? 'col-span-12 md:col-span-8' : 'col-span-12',
+        )}>
           <div className="flex items-center gap-2">
             <Wheat className="h-4 w-4 text-primary" />
             <h2 className="text-sm font-bold text-foreground uppercase tracking-wide">Campaña activa</h2>
@@ -134,7 +144,25 @@ export function LoteDetallePage() {
         </section>
       )}
 
-      {/* Historial */}
+      {/* Si no hay campañas (empty state) — comparte el grid con arrendamiento */}
+      {historial.length === 0 && (
+        <div className={cn(
+          'rounded-xl border border-dashed border-border p-12 text-center flex flex-col items-center justify-center',
+          tieneArrendamiento ? 'col-span-12 md:col-span-8' : 'col-span-12',
+        )}>
+          <Wheat className="h-8 w-8 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground mt-3">Este lote todavía no se sembró en ninguna campaña.</p>
+          <Link
+            to="/campanias"
+            className="inline-flex items-center justify-center gap-2 mt-4 h-10 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary-hover transition"
+          >
+            Ir a campañas
+          </Link>
+        </div>
+      )}
+      </div>
+
+      {/* Historial — full width abajo */}
       {historial.length > 1 && (
         <section className="space-y-3">
           <div className="flex items-center gap-2">
@@ -174,20 +202,6 @@ export function LoteDetallePage() {
             ))}
           </ul>
         </section>
-      )}
-
-      {/* Si no hay campañas */}
-      {historial.length === 0 && (
-        <div className="rounded-xl border border-dashed border-border p-12 text-center">
-          <Wheat className="h-8 w-8 text-muted-foreground mx-auto" />
-          <p className="text-sm text-muted-foreground mt-3">Este lote todavía no se sembró en ninguna campaña.</p>
-          <Link
-            to="/campanias"
-            className="inline-flex items-center justify-center gap-2 mt-4 h-10 px-4 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary-hover transition"
-          >
-            Ir a campañas
-          </Link>
-        </div>
       )}
 
       {/* Monitoreos del lote — buscamos los de la campaña activa */}
