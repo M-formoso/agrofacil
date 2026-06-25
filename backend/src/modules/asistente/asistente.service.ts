@@ -1,9 +1,19 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { RolMensaje } from '@prisma/client';
+import { Prisma, RolMensaje } from '@prisma/client';
+import { promises as fs } from 'fs';
+import { extname } from 'path';
+
 import { PrismaService } from '../../prisma/prisma.service';
-import { ClaudeClient, type ClaudeMessage } from './claude.client';
+import { ClaudeClient, type ClaudeMessage, type ImagenAdjunta } from './claude.client';
 import { ContextService } from './context.service';
 import { ToolExecutorService } from './tool-executor.service';
+
+interface AdjuntoMensaje {
+  tipo: 'image';
+  url: string;
+  mediaType: ImagenAdjunta['mediaType'];
+  nombre: string;
+}
 
 /**
  * Orquestador del asistente IA agronómico.
@@ -66,22 +76,56 @@ export class AsistenteService {
     await this.prisma.conversacion.update({ where: { id }, data: { activo: false } });
   }
 
-  async enviarMensaje(cuentaId: string, usuarioId: string, conversacionId: string, contenido: string) {
+  async enviarMensaje(
+    cuentaId: string,
+    usuarioId: string,
+    conversacionId: string,
+    contenido: string,
+    archivosImagen: Express.Multer.File[] = [],
+  ) {
     const conv = await this.obtenerConversacion(cuentaId, usuarioId, conversacionId);
 
-    // 1) Mensaje del usuario
+    // 1) Procesar adjuntos: leer cada imagen una vez en buffer para reusar
+    // (URL guardada en metadata + base64 para Claude).
+    const adjuntos: AdjuntoMensaje[] = [];
+    const imagenesParaClaude: ImagenAdjunta[] = [];
+
+    for (const file of archivosImagen) {
+      try {
+        const buffer = await fs.readFile(file.path);
+        const dataBase64 = buffer.toString('base64');
+        const mediaType = this.mediaTypeDesdeExtension(file.filename);
+        adjuntos.push({
+          tipo: 'image',
+          url: `/uploads/asistente/${file.filename}`,
+          mediaType,
+          nombre: file.originalname,
+        });
+        imagenesParaClaude.push({ mediaType, dataBase64 });
+      } catch (err) {
+        this.logger.error(`No pude leer la imagen ${file.path}: ${(err as Error).message}`);
+      }
+    }
+
+    // 2) Mensaje del usuario en DB (con adjuntos en metadata)
     const userMsg = await this.prisma.mensaje.create({
-      data: { conversacionId, rol: RolMensaje.user, contenido },
+      data: {
+        conversacionId,
+        rol: RolMensaje.user,
+        contenido,
+        metadata: adjuntos.length > 0 ? ({ adjuntos } as unknown as Prisma.InputJsonValue) : Prisma.JsonNull,
+      },
     });
 
-    // 2) Contexto agro
+    // 3) Contexto agro
     const contexto = await this.context.armarContexto(cuentaId);
 
-    // 3) Historial
+    // 4) Historial — para mensajes previos no recuperamos imágenes
+    // (sólo el último ya las tiene desde el path actual)
     const mensajesPrevios = await this.prisma.mensaje.findMany({
-      where: { conversacionId },
+      where: { conversacionId, id: { not: userMsg.id } },
       orderBy: { createdAt: 'asc' },
-      take: AsistenteService.HISTORIA_MAX,
+      take: AsistenteService.HISTORIA_MAX - 1,
     });
 
     const claudeMessages: ClaudeMessage[] = mensajesPrevios
@@ -91,10 +135,17 @@ export class AsistenteService {
         content: m.contenido,
       }));
 
-    // 4) System prompt
+    // 5) Agregar el mensaje recién creado CON sus imágenes
+    claudeMessages.push({
+      role: 'user',
+      content: contenido || (imagenesParaClaude.length > 0 ? 'Mirá esto.' : ''),
+      imagenes: imagenesParaClaude.length > 0 ? imagenesParaClaude : undefined,
+    });
+
+    // 6) System prompt
     const systemPrompt = this.armarSystemPrompt(contexto);
 
-    // 5) Claude con tool use loop
+    // 7) Claude con tool use loop
     let respuestaTexto: string;
     let metadata: Record<string, unknown> = {};
     try {
@@ -119,7 +170,7 @@ export class AsistenteService {
       metadata = { error: (err as Error).message };
     }
 
-    // 6) Mensaje del asistente
+    // 8) Mensaje del asistente
     const assistantMsg = await this.prisma.mensaje.create({
       data: {
         conversacionId,
@@ -129,9 +180,10 @@ export class AsistenteService {
       },
     });
 
-    // 7) Título
+    // 9) Título
     if (!conv.titulo) {
-      const titulo = contenido.trim().slice(0, 60) + (contenido.length > 60 ? '…' : '');
+      const baseTitulo = contenido.trim() || (adjuntos.length > 0 ? `Imagen — ${adjuntos[0].nombre}` : 'Conversación');
+      const titulo = baseTitulo.slice(0, 60) + (baseTitulo.length > 60 ? '…' : '');
       await this.prisma.conversacion.update({
         where: { id: conversacionId },
         data: { titulo, updatedAt: new Date() },
@@ -150,6 +202,16 @@ export class AsistenteService {
   // SYSTEM PROMPT — agente agronómico de AgroFácil
   // Basado en AgroFacil_Prompt_Agente_Agronomico.docx v1.0
   // ============================================================
+
+  private mediaTypeDesdeExtension(filename: string): ImagenAdjunta['mediaType'] {
+    const ext = extname(filename).toLowerCase();
+    switch (ext) {
+      case '.png':  return 'image/png';
+      case '.webp': return 'image/webp';
+      case '.gif':  return 'image/gif';
+      default:      return 'image/jpeg';
+    }
+  }
 
   private armarSystemPrompt(contexto: object): string {
     const contextoJson = JSON.stringify(contexto, null, 2);

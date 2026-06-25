@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   MessageSquarePlus, Trash2, Loader2, ArrowUp, Sparkles, BarChart3,
-  CloudRain, Calculator, Wheat,
+  CloudRain, Calculator, Wheat, Image as ImageIcon, Mic, MicOff, X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,11 @@ import { asistenteService, type Conversacion, type Mensaje as MensajeType } from
 import { extraerMensajeError } from '@/lib/apiClient';
 import { Mensaje } from '@/components/asistente/Mensaje';
 import { Logo } from '@/components/layout/Logo';
+import { useDictado } from '@/hooks/useDictado';
 import { cn } from '@/lib/utils';
+
+const MAX_IMAGENES = 4;
+const MAX_BYTES = 8 * 1024 * 1024;
 
 const PROMPTS_SUGERIDOS = [
   { icon: Calculator,  texto: '¿Cuál es el margen neto del lote 4?' },
@@ -200,15 +204,23 @@ function EmptyChatState({
 function ChatArea({ mensajes, conversacionId }: { mensajes: MensajeType[]; conversacionId: string }) {
   const qc = useQueryClient();
   const [borrador, setBorrador] = useState('');
+  const [imagenes, setImagenes] = useState<File[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const dictado = useDictado();
+  const ultimoLargoFinal = useRef(0);
 
   const enviar = useMutation({
-    mutationFn: (contenido: string) => asistenteService.enviarMensaje(conversacionId, contenido),
+    mutationFn: ({ texto, archivos }: { texto: string; archivos: File[] }) =>
+      asistenteService.enviarMensaje(conversacionId, texto, archivos),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['asistente-conversacion', conversacionId] });
       qc.invalidateQueries({ queryKey: ['asistente-conversaciones'] });
       setBorrador('');
+      setImagenes([]);
+      dictado.resetear();
+      ultimoLargoFinal.current = 0;
       setTimeout(() => inputRef.current?.focus(), 100);
     },
     onError: (e) => toast.error(extraerMensajeError(e)),
@@ -221,10 +233,72 @@ function ChatArea({ mensajes, conversacionId }: { mensajes: MensajeType[]; conve
     }
   }, [mensajes, enviar.isPending]);
 
+  // Mientras dictado está activo, ir agregando lo nuevo al borrador
+  useEffect(() => {
+    if (!dictado.grabando) return;
+    const nuevo = dictado.textoEnVivo;
+    if (nuevo.length > ultimoLargoFinal.current) {
+      const delta = nuevo.slice(ultimoLargoFinal.current);
+      setBorrador((prev) => {
+        const base = prev.endsWith(' ') || prev === '' ? prev : prev + ' ';
+        return base + delta;
+      });
+      ultimoLargoFinal.current = nuevo.length;
+    }
+  }, [dictado.textoEnVivo, dictado.grabando]);
+
+  useEffect(() => {
+    if (dictado.error) {
+      const msg =
+        dictado.error === 'not-allowed'
+          ? 'Tenés que habilitar el micrófono para usar el dictado.'
+          : dictado.error === 'no-speech'
+            ? 'No te escuché. Probá hablar más cerca del mic.'
+            : `Error de dictado: ${dictado.error}`;
+      toast.error(msg);
+    }
+  }, [dictado.error]);
+
+  const handleArchivos = (lista: FileList | null) => {
+    if (!lista) return;
+    const validos: File[] = [];
+    for (const f of Array.from(lista)) {
+      if (!f.type.startsWith('image/')) {
+        toast.error(`"${f.name}" no es una imagen`);
+        continue;
+      }
+      if (f.size > MAX_BYTES) {
+        toast.error(`"${f.name}" pesa más de 8 MB`);
+        continue;
+      }
+      validos.push(f);
+    }
+    const total = [...imagenes, ...validos].slice(0, MAX_IMAGENES);
+    if (imagenes.length + validos.length > MAX_IMAGENES) {
+      toast.error(`Máximo ${MAX_IMAGENES} imágenes`);
+    }
+    setImagenes(total);
+    if (fileRef.current) fileRef.current.value = '';
+  };
+
+  const quitarImagen = (i: number) => {
+    setImagenes((prev) => prev.filter((_, idx) => idx !== i));
+  };
+
   const enviarMensaje = () => {
     const texto = borrador.trim();
-    if (!texto || enviar.isPending) return;
-    enviar.mutate(texto);
+    if ((!texto && imagenes.length === 0) || enviar.isPending) return;
+    if (dictado.grabando) dictado.detener();
+    enviar.mutate({ texto, archivos: imagenes });
+  };
+
+  const toggleDictado = () => {
+    if (dictado.grabando) {
+      dictado.detener();
+    } else {
+      ultimoLargoFinal.current = 0;
+      dictado.iniciar();
+    }
   };
 
   const sinMensajes = mensajes.length === 0;
@@ -233,7 +307,7 @@ function ChatArea({ mensajes, conversacionId }: { mensajes: MensajeType[]; conve
     <>
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 lg:p-6 min-h-0">
         {sinMensajes ? (
-          <PromptsIniciales onElegir={(t) => enviar.mutate(t)} disabled={enviar.isPending} />
+          <PromptsIniciales onElegir={(t) => enviar.mutate({ texto: t, archivos: [] })} disabled={enviar.isPending} />
         ) : (
           <div className="space-y-4 max-w-3xl mx-auto">
             {mensajes.map((m) => (
@@ -264,35 +338,106 @@ function ChatArea({ mensajes, conversacionId }: { mensajes: MensajeType[]; conve
 
       {/* Input */}
       <div className="border-t border-border p-3 lg:p-4">
-        <div className="max-w-3xl mx-auto flex items-end gap-2">
-          <textarea
-            ref={inputRef}
-            value={borrador}
-            onChange={(e) => setBorrador(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                enviarMensaje();
+        <div className="max-w-3xl mx-auto space-y-2">
+          {/* Preview de imágenes pendientes */}
+          {imagenes.length > 0 && (
+            <ul className="flex gap-2 overflow-x-auto pb-1">
+              {imagenes.map((img, i) => (
+                <li key={`${img.name}-${i}`} className="relative shrink-0">
+                  <img
+                    src={URL.createObjectURL(img)}
+                    alt={img.name}
+                    className="h-16 w-16 rounded-lg object-cover border border-border"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => quitarImagen(i)}
+                    className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-foreground text-background flex items-center justify-center shadow-sm"
+                    aria-label="Quitar imagen"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <div className="flex items-end gap-2">
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={(e) => handleArchivos(e.target.files)}
+            />
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              disabled={enviar.isPending || imagenes.length >= MAX_IMAGENES}
+              className="h-11 w-11 shrink-0 rounded-xl border border-border bg-background hover:bg-muted disabled:opacity-50 inline-flex items-center justify-center transition"
+              aria-label="Adjuntar imagen"
+              title="Adjuntar imagen"
+            >
+              <ImageIcon className="h-4 w-4 text-muted-foreground" />
+            </button>
+
+            {dictado.soportado && (
+              <button
+                type="button"
+                onClick={toggleDictado}
+                disabled={enviar.isPending}
+                className={cn(
+                  'h-11 w-11 shrink-0 rounded-xl inline-flex items-center justify-center transition',
+                  dictado.grabando
+                    ? 'bg-destructive text-destructive-foreground animate-pulse'
+                    : 'border border-border bg-background hover:bg-muted',
+                )}
+                aria-label={dictado.grabando ? 'Detener dictado' : 'Dictar por voz'}
+                title={dictado.grabando ? 'Detener dictado' : 'Dictar por voz'}
+              >
+                {dictado.grabando
+                  ? <MicOff className="h-4 w-4" />
+                  : <Mic className="h-4 w-4 text-muted-foreground" />}
+              </button>
+            )}
+
+            <textarea
+              ref={inputRef}
+              value={borrador}
+              onChange={(e) => setBorrador(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  enviarMensaje();
+                }
+              }}
+              placeholder={
+                dictado.grabando
+                  ? 'Escuchando… hablá en español.'
+                  : imagenes.length > 0
+                    ? 'Contale qué ves en la foto (opcional).'
+                    : 'Preguntá algo sobre tu campo, lluvias, márgenes…'
               }
-            }}
-            placeholder="Preguntá algo sobre tu campo, lluvias, márgenes…"
-            rows={1}
-            className="flex-1 resize-none min-h-[44px] max-h-32 px-4 py-3 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-surface"
-            disabled={enviar.isPending}
-          />
-          <Button
-            onClick={enviarMensaje}
-            disabled={!borrador.trim() || enviar.isPending}
-            size="icon"
-            className="h-11 w-11 shrink-0"
-            aria-label="Enviar"
-          >
-            {enviar.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUp className="h-4 w-4" />}
-          </Button>
+              rows={1}
+              className="flex-1 resize-none min-h-[44px] max-h-32 px-4 py-3 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-surface"
+              disabled={enviar.isPending}
+            />
+            <Button
+              onClick={enviarMensaje}
+              disabled={(!borrador.trim() && imagenes.length === 0) || enviar.isPending}
+              size="icon"
+              className="h-11 w-11 shrink-0"
+              aria-label="Enviar"
+            >
+              {enviar.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUp className="h-4 w-4" />}
+            </Button>
+          </div>
+
+          <p className="text-[10px] text-muted-foreground text-center">
+            El asistente lee tus datos reales (lotes, costos, lluvias, clima) e interpreta fotos y dictado de voz.
+          </p>
         </div>
-        <p className="text-[10px] text-muted-foreground text-center mt-2">
-          El asistente lee tus datos reales (lotes, costos, lluvias, clima) para responder.
-        </p>
       </div>
     </>
   );

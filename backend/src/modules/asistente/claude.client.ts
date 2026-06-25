@@ -3,10 +3,20 @@ import { ConfigService } from '@nestjs/config';
 import Anthropic from '@anthropic-ai/sdk';
 import { TOOLS } from './tools';
 
-/** Mensaje en el formato que espera Claude. */
+/** Una imagen adjunta a un mensaje user. */
+export interface ImagenAdjunta {
+  /** image/jpeg, image/png, image/webp, image/gif */
+  mediaType: 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif';
+  /** Datos en base64 sin el prefijo "data:". */
+  dataBase64: string;
+}
+
+/** Mensaje en el formato que espera Claude. Soporta texto + imágenes. */
 export interface ClaudeMessage {
   role: 'user' | 'assistant';
   content: string;
+  /** Opcional, solo para role=user. Si tiene items, el contenido se envía como bloques multimodales. */
+  imagenes?: ImagenAdjunta[];
 }
 
 export interface ClaudeRunResult {
@@ -77,10 +87,24 @@ export class ClaudeClient {
       };
     }
 
-    const conversacion: Anthropic.MessageParam[] = messages.map((m) => ({
-      role: m.role,
-      content: m.content,
-    }));
+    const conversacion: Anthropic.MessageParam[] = messages.map((m) => {
+      // Si es un user con imágenes, mandamos content como array de bloques.
+      if (m.role === 'user' && m.imagenes && m.imagenes.length > 0) {
+        const bloques: Anthropic.ContentBlockParam[] = m.imagenes.map((img) => ({
+          type: 'image',
+          source: {
+            type: 'base64',
+            media_type: img.mediaType,
+            data: img.dataBase64,
+          },
+        }));
+        if (m.content.trim()) {
+          bloques.push({ type: 'text', text: m.content });
+        }
+        return { role: 'user', content: bloques };
+      }
+      return { role: m.role, content: m.content };
+    });
 
     let totalInputTokens = 0;
     let totalOutputTokens = 0;

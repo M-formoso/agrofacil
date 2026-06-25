@@ -1,13 +1,14 @@
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { motion } from 'framer-motion';
-import { Bot, User } from 'lucide-react';
+import { User } from 'lucide-react';
 import { Logo } from '@/components/layout/Logo';
-import type { Mensaje as MensajeType } from '@/services/asistenteService';
+import { type Mensaje as MensajeType, urlAdjuntoAbsoluta } from '@/services/asistenteService';
 import { cn } from '@/lib/utils';
 
 export function Mensaje({ mensaje }: { mensaje: MensajeType }) {
   const esUser = mensaje.rol === 'user';
+  const adjuntos = mensaje.metadata?.adjuntos ?? [];
 
   return (
     <motion.div
@@ -24,16 +25,39 @@ export function Mensaje({ mensaje }: { mensaje: MensajeType }) {
 
       <div
         className={cn(
-          'max-w-[80%] rounded-2xl px-4 py-3',
+          'max-w-[80%] rounded-2xl px-4 py-3 space-y-2',
           esUser ? 'bg-primary text-primary-foreground' : 'bg-surface border border-border text-foreground',
         )}
       >
-        {esUser ? (
-          <p className="whitespace-pre-wrap text-sm">{mensaje.contenido}</p>
-        ) : (
-          <div className="markdown-asistente text-sm">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{mensaje.contenido}</ReactMarkdown>
+        {adjuntos.length > 0 && (
+          <div className={cn('grid gap-1.5', adjuntos.length === 1 ? 'grid-cols-1' : 'grid-cols-2')}>
+            {adjuntos.map((a) => (
+              <a
+                key={a.url}
+                href={urlAdjuntoAbsoluta(a.url)}
+                target="_blank"
+                rel="noreferrer"
+                className="block rounded-lg overflow-hidden border border-white/15"
+              >
+                <img
+                  src={urlAdjuntoAbsoluta(a.url)}
+                  alt={a.nombre}
+                  className="w-full max-h-64 object-cover"
+                  loading="lazy"
+                />
+              </a>
+            ))}
           </div>
+        )}
+
+        {mensaje.contenido && (
+          esUser ? (
+            <p className="whitespace-pre-wrap text-sm">{mensaje.contenido}</p>
+          ) : (
+            <div className="markdown-asistente text-sm">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{mensaje.contenido}</ReactMarkdown>
+            </div>
+          )
         )}
       </div>
 
@@ -45,5 +69,3 @@ export function Mensaje({ mensaje }: { mensaje: MensajeType }) {
     </motion.div>
   );
 }
-
-void Bot;
