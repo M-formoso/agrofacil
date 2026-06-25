@@ -65,6 +65,7 @@ model Usuario {
   monitoreos   Monitoreo[]
   reportes     Reporte[]
   comentariosReporte ComentarioReporte[]
+  alertas      Alerta[]
 
   @@index([cuentaId])
   @@map("usuarios")
@@ -495,4 +496,51 @@ model ComentarioReporte {
 
   @@index([reporteId])
   @@map("comentarios_reporte")
+}
+
+// ============================================================
+// Alertas
+// ============================================================
+// Infraestructura para notificar eventos importantes a un usuario o a
+// toda la cuenta. Las reglas que disparan alertas (umbrales de clima,
+// vencimiento de tareas, etc.) se sumarán después — por ahora la API
+// existe y el ingeniero las puede crear a mano si quiere.
+
+enum SeveridadAlerta {
+  info
+  warning
+  critica
+}
+
+enum TipoAlerta {
+  clima        // helada, ola de calor, viento
+  agua         // déficit/exceso
+  plaga        // detección manual o por monitoreo
+  vencimiento  // labor sugerida, control programado
+  general
+}
+
+model Alerta {
+  id          String          @id @default(uuid())
+  cuentaId    String          @map("cuenta_id")
+  /// Si está null, la alerta es para toda la cuenta. Si tiene valor,
+  /// es dirigida a un usuario específico.
+  usuarioId   String?         @map("usuario_id")
+  tipo        TipoAlerta      @default(general)
+  severidad   SeveridadAlerta @default(info)
+  titulo      String
+  detalle     String?         @db.Text
+  /// JSON con contexto: { loteCampaniaId, monitoreoId, fecha, ... }.
+  /// Se usa para hacer drilldown al detalle correspondiente.
+  contexto    Json?
+  leida       Boolean         @default(false)
+  activo      Boolean         @default(true)
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  usuario     Usuario?        @relation(fields: [usuarioId], references: [id])
+
+  @@index([cuentaId, leida])
+  @@index([usuarioId])
+  @@map("alertas")
 }

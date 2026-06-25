@@ -4,6 +4,7 @@ import { LogOut, Search } from 'lucide-react';
 import { filtrarPorRol, navItems } from '@/constants/navigation';
 import { LogoLockup } from './Logo';
 import { AccountSwitcher } from './AccountSwitcher';
+import { AlertasBadge } from './AlertasBadge';
 import { useAuthStore } from '@/stores/authStore';
 import { useCommandPalette } from '@/stores/commandPaletteStore';
 import { cn } from '@/lib/utils';
@@ -23,9 +24,14 @@ export function Sidebar() {
           <LogoLockup size={30} variant="light" animated />
         </div>
 
-        {/* Selector / info de cuenta */}
+        {/* Selector / info de cuenta + alertas */}
         <div className="px-3 pb-4 border-b border-white/15 shrink-0">
-          <AccountSwitcher variant="light" />
+          <div className="flex items-center gap-2">
+            <div className="flex-1 min-w-0">
+              <AccountSwitcher variant="light" />
+            </div>
+            <AlertasBadge variant="light" />
+          </div>
         </div>
 
         {/* Nav — toma todo el espacio disponible */}

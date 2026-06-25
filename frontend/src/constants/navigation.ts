@@ -1,6 +1,6 @@
 import {
   Home, Tractor, Sprout, CalendarRange, ClipboardList,
-  Beaker, BarChart3, Wheat, CloudRain, CloudSun, Sparkles, UserPlus, FileText,
+  Beaker, BarChart3, Wheat, CloudRain, CloudSun, Sparkles, UserPlus, FileText, Bell,
   type LucideIcon,
 } from 'lucide-react';
 import type { RolEnCuenta } from '@/stores/authStore';
@@ -27,6 +27,7 @@ export const navItems: NavItem[] = [
   { to: '/insumos',           label: 'Insumos',          icon: Beaker,        keywords: ['fertilizante', 'herbicida'], roles: ['ingeniero'] },
   { to: '/resumen',           label: 'Resumen',          icon: BarChart3,     keywords: ['resultado', 'margen', 'punto eq'] },
   { to: '/reportes',          label: 'Reportes',         icon: FileText,      keywords: ['compartir', 'pdf', 'link', 'comentarios'] },
+  { to: '/alertas',           label: 'Alertas',          icon: Bell,          keywords: ['notificaciones', 'aviso', 'recordatorio'] },
   { to: '/propietarios',      label: 'Propietarios',     icon: UserPlus,      keywords: ['acceso', 'productor', 'cliente', 'invitar'], roles: ['ingeniero'] },
 ];
 

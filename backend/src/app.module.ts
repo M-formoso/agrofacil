@@ -25,6 +25,7 @@ import { ClimaModule } from './modules/clima/clima.module';
 import { AsistenteModule } from './modules/asistente/asistente.module';
 import { MonitoreosModule } from './modules/monitoreos/monitoreos.module';
 import { ReportesModule } from './modules/reportes/reportes.module';
+import { AlertasModule } from './modules/alertas/alertas.module';
 import { HealthModule } from './modules/health/health.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
@@ -75,6 +76,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     AsistenteModule,
     MonitoreosModule,
     ReportesModule,
+    AlertasModule,
   ],
   providers: [
     { provide: APP_PIPE, useClass: ZodValidationPipe },
