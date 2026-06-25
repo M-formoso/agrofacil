@@ -4,6 +4,7 @@ import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { CommandPalette } from './CommandPalette';
 import { OfflineIndicator } from './OfflineIndicator';
+import { Fab } from './Fab';
 
 export function AppLayout() {
   const location = useLocation();
@@ -30,6 +31,7 @@ export function AppLayout() {
       </div>
       <CommandPalette />
       <OfflineIndicator />
+      <Fab />
     </div>
   );
 }

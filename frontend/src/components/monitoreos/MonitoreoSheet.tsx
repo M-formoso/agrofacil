@@ -2,14 +2,15 @@ import { useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Camera, Loader2, MapPin, X } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Camera, Loader2, MapPin, Sprout, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Sheet } from '@/components/ui/Sheet';
+import { lotesCampaniaService } from '@/services/lotesCampaniaService';
 import { monitoreosService, type TipoMonitoreo, type Urgencia } from '@/services/monitoreosService';
 import { extraerMensajeError } from '@/lib/apiClient';
 import { cn } from '@/lib/utils';
@@ -40,17 +41,22 @@ type FormData = z.input<typeof schema>;
 
 interface Props {
   open: boolean;
-  loteCampaniaId: string;
+  /** Si no se pasa, el sheet muestra primero un picker de lote-campaña. */
+  loteCampaniaId?: string;
   onClose: () => void;
 }
 
 const MAX_FOTOS = 6;
 const MAX_BYTES = 8 * 1024 * 1024;
 
-export function MonitoreoSheet({ open, loteCampaniaId, onClose }: Props) {
+export function MonitoreoSheet({ open, loteCampaniaId: loteFijo, onClose }: Props) {
   const qc = useQueryClient();
   const [archivos, setArchivos] = useState<File[]>([]);
   const [capturandoGps, setCapturandoGps] = useState(false);
+  const [loteElegido, setLoteElegido] = useState<string | null>(loteFijo ?? null);
+
+  // Si el sheet abre con loteFijo distinto, lo sincronizamos.
+  const loteCampaniaId = loteFijo ?? loteElegido;
 
   const {
     register,
@@ -78,11 +84,19 @@ export function MonitoreoSheet({ open, loteCampaniaId, onClose }: Props) {
   const cerrarYReset = () => {
     reset();
     setArchivos([]);
+    if (!loteFijo) setLoteElegido(null);
     onClose();
   };
 
+  const { data: lotesActivos } = useQuery({
+    queryKey: ['lotes-campania-activos-fab'],
+    queryFn: () => lotesCampaniaService.listar({ limit: 100 }),
+    enabled: open && !loteFijo,
+  });
+
   const crear = useMutation({
     mutationFn: async (data: FormData) => {
+      if (!loteCampaniaId) throw new Error('Elegí un lote primero');
       const monitoreo = await monitoreosService.crear({
         loteCampaniaId,
         tipo: data.tipo,
@@ -163,6 +177,35 @@ export function MonitoreoSheet({ open, loteCampaniaId, onClose }: Props) {
       description="Registrá lo que viste en el lote. Podés agregar fotos y ubicación."
     >
       <form onSubmit={handleSubmit((d) => crear.mutate(d))} className="space-y-4">
+        {/* Picker de lote-campaña (sólo si no viene fijo desde el contexto) */}
+        {!loteFijo && (
+          <div className="space-y-2">
+            <Label htmlFor="lote-campania">Lote</Label>
+            <div className="relative">
+              <Sprout className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+              <select
+                id="lote-campania"
+                value={loteElegido ?? ''}
+                onChange={(e) => setLoteElegido(e.target.value || null)}
+                className="w-full h-10 pl-9 pr-3 rounded-md border border-border bg-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 appearance-none"
+                required
+              >
+                <option value="">Elegí un lote sembrado…</option>
+                {lotesActivos?.items.map((lc) => (
+                  <option key={lc.id} value={lc.id}>
+                    {lc.lote?.nombre} · {lc.cultivo?.nombre} · {lc.campania?.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {!loteElegido && (
+              <p className="text-xs text-muted-foreground">
+                El monitoreo se registra sobre una campaña sembrada en un lote.
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Tipo */}
         <div className="space-y-2">
           <Label>Tipo</Label>
@@ -340,7 +383,7 @@ export function MonitoreoSheet({ open, loteCampaniaId, onClose }: Props) {
 
         <div className="flex justify-end gap-2 border-t border-border pt-4 sticky bottom-0 bg-surface">
           <Button type="button" variant="outline" onClick={cerrarYReset}>Cancelar</Button>
-          <Button type="submit" disabled={crear.isPending}>
+          <Button type="submit" disabled={crear.isPending || !loteCampaniaId}>
             {crear.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
             Guardar monitoreo
           </Button>
