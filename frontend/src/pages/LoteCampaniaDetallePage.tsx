@@ -6,11 +6,12 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
-  ArrowLeft, Plus, Trash2, Loader2, Sprout, Beaker, ClipboardList, Tractor as TractorIcon, Pencil, Camera,
+  ArrowLeft, Plus, Trash2, Loader2, Sprout, Beaker, ClipboardList, Tractor as TractorIcon, Pencil, Camera, Share2,
 } from 'lucide-react';
 import { EditarInsumoSheet } from '@/components/insumos/EditarInsumoSheet';
 import { EditarLaborSheet } from '@/components/labores/EditarLaborSheet';
 import { MonitoreosPanel } from '@/components/monitoreos/MonitoreosPanel';
+import { GenerarReporteSheet } from '@/components/reportes/GenerarReporteSheet';
 import { useAuthStore } from '@/stores/authStore';
 import type { Labor, InsumoAplicado } from '@/types/agro';
 import { toast } from 'sonner';
@@ -59,6 +60,7 @@ export function LoteCampaniaDetallePage() {
   const { id } = useParams<{ id: string }>();
   const qc = useQueryClient();
   const [tab, setTab] = useState<'resultado' | 'labores' | 'insumos' | 'monitoreos'>('resultado');
+  const [generandoReporte, setGenerandoReporte] = useState(false);
   const rolEnCuenta = useAuthStore((s) => s.usuario?.rolEnCuentaActiva);
   const [creating, setCreating] = useState<'labor' | 'insumo' | null>(null);
   const [editandoDatos, setEditandoDatos] = useState(false);
@@ -126,13 +128,26 @@ export function LoteCampaniaDetallePage() {
           </p>
           <div className="flex items-center justify-between gap-2 mt-1">
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-white">{lc.lote?.nombre}</h1>
-            <button
-              onClick={() => setEditandoDatos(true)}
-              className="h-9 px-3 rounded-md bg-white/15 hover:bg-white/25 text-white text-xs font-medium inline-flex items-center gap-1.5 backdrop-blur-sm transition shrink-0"
-            >
-              <Pencil className="h-3.5 w-3.5" />
-              Editar datos
-            </button>
+            <div className="flex items-center gap-1.5 shrink-0">
+              {(rolEnCuenta === 'ingeniero' || rolEnCuenta === 'operador') && (
+                <>
+                  <button
+                    onClick={() => setEditandoDatos(true)}
+                    className="h-9 px-3 rounded-md bg-white/15 hover:bg-white/25 text-white text-xs font-medium inline-flex items-center gap-1.5 backdrop-blur-sm transition"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Editar datos</span>
+                  </button>
+                  <button
+                    onClick={() => setGenerandoReporte(true)}
+                    className="h-9 px-3 rounded-md bg-white/15 hover:bg-white/25 text-white text-xs font-medium inline-flex items-center gap-1.5 backdrop-blur-sm transition"
+                  >
+                    <Share2 className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Compartir reporte</span>
+                  </button>
+                </>
+              )}
+            </div>
           </div>
           <p className="text-xs sm:text-sm text-white/85 mt-1 capitalize">
             {lc.cultivo?.nombre} · {formatearHa(lc.superficieSembradaHa)}
@@ -339,6 +354,12 @@ export function LoteCampaniaDetallePage() {
         open={!!editandoInsumo}
         insumo={editandoInsumo}
         onClose={() => setEditandoInsumo(null)}
+      />
+      <GenerarReporteSheet
+        open={generandoReporte}
+        loteCampaniaId={id!}
+        tituloSugerido={`${lc.lote?.nombre ?? 'Lote'} · ${lc.cultivo?.nombre ?? ''} · ${lc.campania?.nombre ?? ''}`}
+        onClose={() => setGenerandoReporte(false)}
       />
     </div>
   );

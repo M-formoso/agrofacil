@@ -63,6 +63,8 @@ model Usuario {
   membresias   UsuarioCuenta[]
   conversaciones Conversacion[]
   monitoreos   Monitoreo[]
+  reportes     Reporte[]
+  comentariosReporte ComentarioReporte[]
 
   @@index([cuentaId])
   @@map("usuarios")
@@ -437,4 +439,60 @@ model FotoMonitoreo {
 
   @@index([monitoreoId])
   @@map("fotos_monitoreo")
+}
+
+// ============================================================
+// Reportes compartibles
+// ============================================================
+// Un reporte es un snapshot de los datos de un lote_campania (o más
+// adelante una campaña entera) que se renderiza como vista pública
+// imprimible. El link público lleva un token único y no requiere auth.
+
+enum TipoReporte {
+  lote_campania
+  campania
+  establecimiento
+}
+
+model Reporte {
+  id            String      @id @default(uuid())
+  cuentaId      String      @map("cuenta_id")
+  autorId       String      @map("autor_id")
+  tipo          TipoReporte
+  titulo        String
+  /// IDs de las entidades referenciadas (loteCampaniaId, campaniaId, etc.).
+  parametros    Json
+  /// Copia de los datos al momento de generar. Si los datos cambian
+  /// después, el reporte público sigue mostrando lo de cuando se creó.
+  datosSnapshot Json        @map("datos_snapshot")
+  tokenPublico  String      @unique @map("token_publico") @default(uuid())
+  expiraEn      DateTime?   @map("expira_en")
+  activo        Boolean     @default(true)
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+
+  autor         Usuario             @relation(fields: [autorId], references: [id])
+  comentarios   ComentarioReporte[]
+
+  @@index([cuentaId])
+  @@index([tokenPublico])
+  @@map("reportes")
+}
+
+/// Los comentarios sí están protegidos: sólo usuarios autenticados de la
+/// cuenta los ven. Es el canal por donde el propietario le devuelve al
+/// ingeniero sus dudas sobre el reporte.
+model ComentarioReporte {
+  id         String   @id @default(uuid())
+  reporteId  String   @map("reporte_id")
+  autorId    String   @map("autor_id")
+  texto      String   @db.Text
+  activo     Boolean  @default(true)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  reporte    Reporte  @relation(fields: [reporteId], references: [id], onDelete: Cascade)
+  autor      Usuario  @relation(fields: [autorId], references: [id])
+
+  @@index([reporteId])
+  @@map("comentarios_reporte")
 }

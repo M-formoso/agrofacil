@@ -17,9 +17,12 @@ import { ResumenPage } from '@/pages/ResumenPage';
 import { PropietariosPage } from '@/pages/PropietariosPage';
 import { EstablecimientoDetallePage } from '@/pages/EstablecimientoDetallePage';
 import { LoteDetallePage } from '@/pages/LoteDetallePage';
+import { ReportesPage } from '@/pages/ReportesPage';
+import { ReportePublicoPage } from '@/pages/ReportePublicoPage';
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
+  { path: '/r/:token', element: <ReportePublicoPage /> },
   {
     element: <RutaProtegida />,
     children: [
@@ -39,6 +42,7 @@ export const router = createBrowserRouter([
       { path: '/insumos', element: <InsumosPage /> },
       { path: '/resumen', element: <ResumenPage /> },
       { path: '/propietarios', element: <PropietariosPage /> },
+      { path: '/reportes', element: <ReportesPage /> },
     ],
   },
   { path: '*', element: <Navigate to="/" replace /> },
