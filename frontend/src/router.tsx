@@ -14,6 +14,7 @@ import { LluviasPage } from '@/pages/LluviasPage';
 import { ClimaPage } from '@/pages/ClimaPage';
 import { AsistentePage } from '@/pages/AsistentePage';
 import { ResumenPage } from '@/pages/ResumenPage';
+import { PropietariosPage } from '@/pages/PropietariosPage';
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -33,6 +34,7 @@ export const router = createBrowserRouter([
       { path: '/cultivos', element: <CultivosPage /> },
       { path: '/insumos', element: <InsumosPage /> },
       { path: '/resumen', element: <ResumenPage /> },
+      { path: '/propietarios', element: <PropietariosPage /> },
     ],
   },
   { path: '*', element: <Navigate to="/" replace /> },

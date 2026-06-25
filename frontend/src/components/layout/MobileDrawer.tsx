@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { Drawer } from 'vaul';
 import { NavLink } from 'react-router-dom';
 import { LogOut, Menu } from 'lucide-react';
-import { navItems } from '@/constants/navigation';
+import { filtrarPorRol, navItems } from '@/constants/navigation';
 import { LogoLockup } from './Logo';
+import { AccountSwitcher } from './AccountSwitcher';
 import { useAuthStore } from '@/stores/authStore';
 import { cn } from '@/lib/utils';
 
@@ -11,6 +12,8 @@ export function MobileDrawer() {
   const [open, setOpen] = useState(false);
   const usuario = useAuthStore((s) => s.usuario);
   const logout = useAuthStore((s) => s.logout);
+
+  const items = filtrarPorRol(navItems, usuario?.rolEnCuentaActiva);
 
   return (
     <Drawer.Root open={open} onOpenChange={setOpen}>
@@ -33,8 +36,12 @@ export function MobileDrawer() {
             <p className="text-xs text-muted-foreground mt-1.5">{usuario?.nombre}</p>
           </div>
 
+          <div className="px-3 pb-3">
+            <AccountSwitcher variant="dark" />
+          </div>
+
           <nav className="px-3 pb-2 max-h-[60vh] overflow-y-auto">
-            {navItems.map((item) => (
+            {items.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}

@@ -17,4 +17,9 @@ export const authService = {
     const res = await apiClient.get<UsuarioActual>('/auth/me');
     return res.data;
   },
+
+  async switchCuenta(cuentaId: string): Promise<LoginResponse> {
+    const res = await apiClient.post<LoginResponse>(`/auth/switch-cuenta/${cuentaId}`);
+    return res.data;
+  },
 };

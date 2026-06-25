@@ -1,11 +1,23 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+export type RolGlobal = 'superadmin' | 'ingeniero' | 'propietario';
+export type RolEnCuenta = 'ingeniero' | 'propietario' | 'operador';
+
+export interface MembresiaResumen {
+  cuentaId: string;
+  cuentaNombre: string;
+  rol: RolEnCuenta;
+}
+
 export interface UsuarioActual {
   id: string;
   email: string;
   nombre: string;
+  rolGlobal: RolGlobal;
   cuentaId: string;
+  rolEnCuentaActiva: RolEnCuenta;
+  membresias: MembresiaResumen[];
 }
 
 interface AuthState {

@@ -1,8 +1,9 @@
 import { NavLink } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { LogOut, Search } from 'lucide-react';
-import { navItems } from '@/constants/navigation';
+import { filtrarPorRol, navItems } from '@/constants/navigation';
 import { LogoLockup } from './Logo';
+import { AccountSwitcher } from './AccountSwitcher';
 import { useAuthStore } from '@/stores/authStore';
 import { useCommandPalette } from '@/stores/commandPaletteStore';
 import { cn } from '@/lib/utils';
@@ -12,6 +13,8 @@ export function Sidebar() {
   const logout = useAuthStore((s) => s.logout);
   const openPalette = useCommandPalette((s) => s.setOpen);
 
+  const items = filtrarPorRol(navItems, usuario?.rolEnCuentaActiva);
+
   return (
     <aside className="hidden lg:flex w-64 shrink-0 h-screen sticky top-0 flex-col p-4">
       <div className="relative flex-1 flex flex-col glass-green rounded-2xl shadow-glass overflow-hidden">
@@ -20,15 +23,14 @@ export function Sidebar() {
           <LogoLockup size={30} variant="light" animated />
         </div>
 
-        {/* Cuenta info */}
-        <div className="px-5 pb-4 border-b border-white/15 shrink-0">
-          <p className="text-[11px] uppercase tracking-wider text-white/60 font-medium">Cuenta</p>
-          <p className="text-sm text-white font-medium truncate">{usuario?.nombre}</p>
+        {/* Selector / info de cuenta */}
+        <div className="px-3 pb-4 border-b border-white/15 shrink-0">
+          <AccountSwitcher variant="light" />
         </div>
 
         {/* Nav — toma todo el espacio disponible */}
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-          {navItems.map((item) => (
+          {items.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
