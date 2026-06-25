@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useForm } from 'react-hook-form';
@@ -106,14 +107,17 @@ export function EstablecimientosPage() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.97 }}
                 transition={{ delay: i * 0.03 }}
-                className="group rounded-2xl bg-surface border border-border p-5 hover:border-primary/40 hover:shadow-lift transition"
+                className="group relative"
               >
-                <div className="flex items-start justify-between gap-3">
+                <Link
+                  to={`/establecimientos/${est.id}`}
+                  className="block rounded-2xl bg-surface border border-border p-5 hover:border-primary/40 hover:shadow-lift transition"
+                >
                   <div className="flex items-start gap-3 min-w-0">
                     <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                       <Tractor className="h-5 w-5 text-primary" />
                     </div>
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <h3 className="font-semibold text-foreground truncate">{est.nombre}</h3>
                       {est.ubicacion && (
                         <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
@@ -122,37 +126,39 @@ export function EstablecimientosPage() {
                       )}
                     </div>
                   </div>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition">
-                    <button
-                      onClick={() => setEditing(est)}
-                      className="h-8 w-8 rounded-md hover:bg-muted flex items-center justify-center"
-                      aria-label="Editar"
-                    >
-                      <Pencil className="h-4 w-4 text-muted-foreground" />
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (confirm(`¿Eliminar "${est.nombre}"?`)) eliminar.mutate(est.id);
-                      }}
-                      className="h-8 w-8 rounded-md hover:bg-destructive/10 hover:text-destructive flex items-center justify-center"
-                      aria-label="Eliminar"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
 
-                <div className="mt-4 flex flex-wrap items-center gap-2">
-                  <TenenciaPill value={est.tenencia} />
-                  {est.superficieTotalHa && (
-                    <span className="text-xs px-2.5 py-1 rounded-full bg-muted text-foreground font-medium tabular-nums">
-                      {formatearHa(est.superficieTotalHa)}
+                  <div className="mt-4 flex flex-wrap items-center gap-2">
+                    <TenenciaPill value={est.tenencia} />
+                    {est.superficieTotalHa && (
+                      <span className="text-xs px-2.5 py-1 rounded-full bg-muted text-foreground font-medium tabular-nums">
+                        {formatearHa(est.superficieTotalHa)}
+                      </span>
+                    )}
+                    <span className="text-xs px-2.5 py-1 rounded-full bg-primary/8 text-primary font-medium flex items-center gap-1">
+                      <Sprout className="h-3 w-3" />
+                      {est._count?.lotes ?? 0} lote{est._count?.lotes === 1 ? '' : 's'}
                     </span>
-                  )}
-                  <span className="text-xs px-2.5 py-1 rounded-full bg-primary/8 text-primary font-medium flex items-center gap-1">
-                    <Sprout className="h-3 w-3" />
-                    {est._count?.lotes ?? 0} lote{est._count?.lotes === 1 ? '' : 's'}
-                  </span>
+                  </div>
+                </Link>
+
+                <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition">
+                  <button
+                    onClick={(e) => { e.preventDefault(); setEditing(est); }}
+                    className="h-8 w-8 rounded-md bg-surface border border-border hover:bg-muted flex items-center justify-center"
+                    aria-label="Editar"
+                  >
+                    <Pencil className="h-4 w-4 text-muted-foreground" />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (confirm(`¿Eliminar "${est.nombre}"?`)) eliminar.mutate(est.id);
+                    }}
+                    className="h-8 w-8 rounded-md bg-surface border border-border hover:bg-destructive/10 hover:text-destructive flex items-center justify-center"
+                    aria-label="Eliminar"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </div>
               </motion.li>
             ))}

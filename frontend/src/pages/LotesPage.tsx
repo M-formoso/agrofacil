@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import useEmblaCarousel from 'embla-carousel-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -215,56 +216,68 @@ function LoteCard({
 }) {
   const arrendado = lote.tenencia === 'arrendado';
   return (
-    <article className="group h-full rounded-2xl bg-surface border border-border p-5 hover:border-primary/40 hover:shadow-lift transition flex flex-col">
-      <div className="flex items-start justify-between gap-2">
+    <article className="group relative h-full">
+      <Link
+        to={`/lotes/${lote.id}`}
+        className="block h-full rounded-2xl bg-surface border border-border p-5 hover:border-primary/40 hover:shadow-lift transition flex flex-col"
+      >
         <div className="min-w-0 flex-1">
           <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
             {lote.establecimiento?.nombre ?? '—'}
           </p>
           <h3 className="font-bold text-foreground truncate text-lg">{lote.nombre}</h3>
         </div>
-        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition">
-          <button onClick={onEdit} className="h-7 w-7 rounded-md hover:bg-muted flex items-center justify-center" aria-label="Editar">
-            <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
-          </button>
-          <button onClick={onDelete} className="h-7 w-7 rounded-md hover:bg-destructive/10 hover:text-destructive flex items-center justify-center" aria-label="Eliminar">
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      </div>
 
-      {/* Hero — superficie */}
-      <div className="mt-4">
-        <p className="display-number text-4xl text-foreground leading-none">
-          {Number(lote.superficieHa).toLocaleString('es-AR', { maximumFractionDigits: 1 })}
-          <span className="text-base text-muted-foreground font-semibold ml-1">ha</span>
-        </p>
-      </div>
-
-      {/* Tenencia + arrendamiento */}
-      <div className="mt-auto pt-4 space-y-2">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className={cn(
-            'text-xs px-2.5 py-1 rounded-full font-medium',
-            lote.tenencia === 'propio' && 'bg-primary/10 text-primary',
-            lote.tenencia === 'arrendado' && 'bg-warning/10 text-warning',
-            lote.tenencia === 'mixto' && 'bg-info/10 text-info',
-            !lote.tenencia && 'bg-muted text-muted-foreground',
-          )}>
-            {lote.tenencia ?? 'Sin definir'}
-          </span>
+        {/* Hero — superficie */}
+        <div className="mt-4">
+          <p className="display-number text-4xl text-foreground leading-none">
+            {Number(lote.superficieHa).toLocaleString('es-AR', { maximumFractionDigits: 1 })}
+            <span className="text-base text-muted-foreground font-semibold ml-1">ha</span>
+          </p>
         </div>
-        {arrendado && lote.arrendamientoValor && (
-          <div className="rounded-lg bg-warning/5 border border-warning/20 px-3 py-2">
-            <p className="text-[10px] uppercase tracking-wider text-warning font-semibold">Alquiler</p>
-            <p className="text-sm font-semibold text-foreground tabular-nums">
-              {Number(lote.arrendamientoValor).toLocaleString('es-AR')}{' '}
-              <span className="text-xs font-medium text-muted-foreground">
-                {labelUnidad(lote.arrendamientoUnidad)}
-              </span>
-            </p>
+
+        {/* Tenencia + arrendamiento */}
+        <div className="mt-auto pt-4 space-y-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={cn(
+              'text-xs px-2.5 py-1 rounded-full font-medium',
+              lote.tenencia === 'propio' && 'bg-primary/10 text-primary',
+              lote.tenencia === 'arrendado' && 'bg-warning/10 text-warning',
+              lote.tenencia === 'mixto' && 'bg-info/10 text-info',
+              !lote.tenencia && 'bg-muted text-muted-foreground',
+            )}>
+              {lote.tenencia ?? 'Sin definir'}
+            </span>
           </div>
-        )}
+          {arrendado && lote.arrendamientoValor && (
+            <div className="rounded-lg bg-warning/5 border border-warning/20 px-3 py-2">
+              <p className="text-[10px] uppercase tracking-wider text-warning font-semibold">Alquiler</p>
+              <p className="text-sm font-semibold text-foreground tabular-nums">
+                {Number(lote.arrendamientoValor).toLocaleString('es-AR')}{' '}
+                <span className="text-xs font-medium text-muted-foreground">
+                  {labelUnidad(lote.arrendamientoUnidad)}
+                </span>
+              </p>
+            </div>
+          )}
+        </div>
+      </Link>
+
+      <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition">
+        <button
+          onClick={(e) => { e.preventDefault(); onEdit(); }}
+          className="h-7 w-7 rounded-md bg-surface border border-border hover:bg-muted flex items-center justify-center"
+          aria-label="Editar"
+        >
+          <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+        </button>
+        <button
+          onClick={(e) => { e.preventDefault(); onDelete(); }}
+          className="h-7 w-7 rounded-md bg-surface border border-border hover:bg-destructive/10 hover:text-destructive flex items-center justify-center"
+          aria-label="Eliminar"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
       </div>
     </article>
   );

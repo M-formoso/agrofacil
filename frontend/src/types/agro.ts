@@ -23,6 +23,7 @@ export interface Establecimiento {
   createdAt: string;
   updatedAt: string;
   _count?: { lotes: number };
+  /** En el detalle del establecimiento llegan los lotes con su campaña activa (1 elemento en lotesCampania). */
   lotes?: Lote[];
 }
 
@@ -38,7 +39,20 @@ export interface Lote {
   activo: boolean;
   createdAt: string;
   updatedAt: string;
-  establecimiento?: { id: string; nombre: string };
+  establecimiento?: { id: string; nombre: string; ubicacion?: string | null };
+  lotesCampania?: Array<{
+    id: string;
+    superficieSembradaHa: string;
+    fechaSiembra: string | null;
+    rindeEstimadoQqHa: string | null;
+    rindeRealQqHa: string | null;
+    precioGranoUsdTn: string | null;
+    fechaCosecha: string | null;
+    createdAt: string;
+    campania: { id: string; nombre: string; tipo: TipoCampania; fechaInicio: string; fechaFin: string };
+    cultivo: { id: string; nombre: string };
+    variedad: { id: string; nombre: string } | null;
+  }>;
 }
 
 export interface Campania {

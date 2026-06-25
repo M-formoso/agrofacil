@@ -15,6 +15,8 @@ import { ClimaPage } from '@/pages/ClimaPage';
 import { AsistentePage } from '@/pages/AsistentePage';
 import { ResumenPage } from '@/pages/ResumenPage';
 import { PropietariosPage } from '@/pages/PropietariosPage';
+import { EstablecimientoDetallePage } from '@/pages/EstablecimientoDetallePage';
+import { LoteDetallePage } from '@/pages/LoteDetallePage';
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -23,7 +25,9 @@ export const router = createBrowserRouter([
     children: [
       { path: '/', element: <InicioPage /> },
       { path: '/establecimientos', element: <EstablecimientosPage /> },
+      { path: '/establecimientos/:id', element: <EstablecimientoDetallePage /> },
       { path: '/lotes', element: <LotesPage /> },
+      { path: '/lotes/:id', element: <LoteDetallePage /> },
       { path: '/campanias', element: <CampaniasPage /> },
       { path: '/campanias/:id', element: <CampaniaDetallePage /> },
       { path: '/lotes-campania/:id', element: <LoteCampaniaDetallePage /> },

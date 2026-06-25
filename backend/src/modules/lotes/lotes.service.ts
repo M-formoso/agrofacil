@@ -30,7 +30,19 @@ export class LotesService {
   async obtenerPorId(cuentaId: string, id: string) {
     const item = await this.prisma.lote.findFirst({
       where: { id, cuentaId },
-      include: { establecimiento: { select: { id: true, nombre: true } } },
+      include: {
+        establecimiento: { select: { id: true, nombre: true, ubicacion: true } },
+        // Historial completo de campañas en este lote, más reciente primero.
+        lotesCampania: {
+          where: { activo: true },
+          orderBy: { createdAt: 'desc' },
+          include: {
+            campania: { select: { id: true, nombre: true, tipo: true, fechaInicio: true, fechaFin: true } },
+            cultivo: { select: { id: true, nombre: true } },
+            variedad: { select: { id: true, nombre: true } },
+          },
+        },
+      },
     });
     if (!item) throw new NotFoundException(`Lote ${id} no encontrado`);
     return item;
