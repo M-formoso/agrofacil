@@ -10,9 +10,14 @@ import { AnimatedNumber } from '@/components/charts/AnimatedNumber';
 import { Logo } from '@/components/layout/Logo';
 import { useAuthStore } from '@/stores/authStore';
 import { cn } from '@/lib/utils';
+import { InicioPropietarioPage } from './InicioPropietarioPage';
 
 export function InicioPage() {
   const usuario = useAuthStore((s) => s.usuario);
+  // El propietario ve una versión simplificada, sin atajos de gestión.
+  if (usuario?.rolEnCuentaActiva === 'propietario') {
+    return <InicioPropietarioPage />;
+  }
 
   const { data: establecimientos } = useQuery({
     queryKey: ['establecimientos', { page: 1, limit: 100 }],
