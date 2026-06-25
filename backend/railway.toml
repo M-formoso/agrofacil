@@ -12,3 +12,6 @@ restartPolicyMaxRetries = 5
 # Notas:
 # - /api/v1/health devuelve 200 con {status, service, timestamp}.
 # - migrate deploy aplica migraciones pendientes en cada start (idempotente).
+# - Para fotos de monitoreo: montar un Railway Volume en /data y setear
+#   UPLOADS_DIR=/data/uploads en variables del servicio. Sin volume, las
+#   fotos se pierden en cada deploy.

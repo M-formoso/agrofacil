@@ -62,6 +62,7 @@ model Usuario {
   cuenta       Cuenta    @relation(fields: [cuentaId], references: [id])
   membresias   UsuarioCuenta[]
   conversaciones Conversacion[]
+  monitoreos   Monitoreo[]
 
   @@index([cuentaId])
   @@map("usuarios")
@@ -264,6 +265,7 @@ model LoteCampania {
   variedad          Variedad?        @relation(fields: [variedadId], references: [id])
   labores           Labor[]
   insumosAplicados  InsumoAplicado[]
+  monitoreos        Monitoreo[]
 
   @@index([cuentaId])
   @@index([loteId])
@@ -372,4 +374,67 @@ model InsumoAplicado {
   @@index([cuentaId])
   @@index([loteCampaniaId])
   @@map("insumos_aplicados")
+}
+
+// ============================================================
+// Monitoreo de campo
+// ============================================================
+// Una visita al lote-campania que documenta lo observado: foto del cultivo,
+// plaga detectada, recomendación de prescripción, etc. Cae sobre un
+// lote_campania (cultivo en lote, en una campaña) y opcionalmente lleva
+// geolocalización del punto exacto donde se sacó la foto.
+
+enum TipoMonitoreo {
+  seguimiento     // chequeo de rutina, estado del cultivo
+  prescripcion    // se detecta algo que requiere una labor/insumo
+  control_plaga   // hay plaga/maleza/enfermedad identificada
+  general         // nota libre
+}
+
+enum Urgencia {
+  baja
+  media
+  alta
+}
+
+model Monitoreo {
+  id              String        @id @default(uuid())
+  cuentaId        String        @map("cuenta_id")
+  loteCampaniaId  String        @map("lote_campania_id")
+  autorId         String        @map("autor_id")
+  tipo            TipoMonitoreo @default(seguimiento)
+  fecha           DateTime      @db.Date
+  observaciones   String        @db.Text
+  /// Lo que hay que hacer al respecto. Vacío si tipo != prescripcion.
+  prescripcion    String?       @db.Text
+  urgencia        Urgencia      @default(baja)
+  latitud         Decimal?      @db.Decimal(10, 7)
+  longitud        Decimal?      @db.Decimal(10, 7)
+  activo          Boolean       @default(true)
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  loteCampania    LoteCampania    @relation(fields: [loteCampaniaId], references: [id])
+  autor           Usuario         @relation(fields: [autorId], references: [id])
+  fotos           FotoMonitoreo[]
+
+  @@index([cuentaId])
+  @@index([loteCampaniaId])
+  @@index([autorId])
+  @@map("monitoreos")
+}
+
+model FotoMonitoreo {
+  id           String   @id @default(uuid())
+  monitoreoId  String   @map("monitoreo_id")
+  /// Ruta servida vía /uploads/... — guardamos la relativa para poder
+  /// cambiar el host sin migrar datos.
+  url          String
+  orden        Int      @default(0)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  monitoreo    Monitoreo @relation(fields: [monitoreoId], references: [id], onDelete: Cascade)
+
+  @@index([monitoreoId])
+  @@map("fotos_monitoreo")
 }

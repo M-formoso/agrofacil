@@ -1,12 +1,13 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD, APP_PIPE } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ServeStaticModule } from '@nestjs/serve-static';
 import { LoggerModule } from 'nestjs-pino';
 import { ZodValidationPipe } from 'nestjs-zod';
 
-import configuration from './config/configuration';
+import configuration, { type AppConfig } from './config/configuration';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { PropietariosModule } from './modules/propietarios/propietarios.module';
@@ -22,6 +23,7 @@ import { CalculosModule } from './modules/calculos/calculos.module';
 import { LluviasModule } from './modules/lluvias/lluvias.module';
 import { ClimaModule } from './modules/clima/clima.module';
 import { AsistenteModule } from './modules/asistente/asistente.module';
+import { MonitoreosModule } from './modules/monitoreos/monitoreos.module';
 import { HealthModule } from './modules/health/health.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
@@ -44,6 +46,16 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
       { name: 'long', ttl: 60_000 * 15, limit: 200 },
     ]),
     ScheduleModule.forRoot(),
+    ServeStaticModule.forRootAsync({
+      useFactory: (cfg: ConfigService<AppConfig, true>) => [
+        {
+          rootPath: cfg.get('uploads', { infer: true }).dir,
+          serveRoot: '/uploads',
+          serveStaticOptions: { fallthrough: false, maxAge: '7d' },
+        },
+      ],
+      inject: [ConfigService],
+    }),
     PrismaModule,
     HealthModule,
     AuthModule,
@@ -60,6 +72,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     LluviasModule,
     ClimaModule,
     AsistenteModule,
+    MonitoreosModule,
   ],
   providers: [
     { provide: APP_PIPE, useClass: ZodValidationPipe },

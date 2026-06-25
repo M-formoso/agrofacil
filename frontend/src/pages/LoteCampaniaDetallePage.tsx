@@ -6,10 +6,12 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
-  ArrowLeft, Plus, Trash2, Loader2, Sprout, Beaker, ClipboardList, Tractor as TractorIcon, Pencil,
+  ArrowLeft, Plus, Trash2, Loader2, Sprout, Beaker, ClipboardList, Tractor as TractorIcon, Pencil, Camera,
 } from 'lucide-react';
 import { EditarInsumoSheet } from '@/components/insumos/EditarInsumoSheet';
 import { EditarLaborSheet } from '@/components/labores/EditarLaborSheet';
+import { MonitoreosPanel } from '@/components/monitoreos/MonitoreosPanel';
+import { useAuthStore } from '@/stores/authStore';
 import type { Labor, InsumoAplicado } from '@/types/agro';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -56,7 +58,8 @@ const INSUMOS_TIPOS: { value: TipoInsumo; label: string }[] = [
 export function LoteCampaniaDetallePage() {
   const { id } = useParams<{ id: string }>();
   const qc = useQueryClient();
-  const [tab, setTab] = useState<'resultado' | 'labores' | 'insumos'>('resultado');
+  const [tab, setTab] = useState<'resultado' | 'labores' | 'insumos' | 'monitoreos'>('resultado');
+  const rolEnCuenta = useAuthStore((s) => s.usuario?.rolEnCuentaActiva);
   const [creating, setCreating] = useState<'labor' | 'insumo' | null>(null);
   const [editandoDatos, setEditandoDatos] = useState(false);
   const [editandoLabor, setEditandoLabor] = useState<Labor | null>(null);
@@ -158,9 +161,10 @@ export function LoteCampaniaDetallePage() {
       {/* Tabs */}
       <div className="flex gap-1 p-1 rounded-xl bg-muted/60 w-full sm:w-fit overflow-x-auto">
         {[
-          { key: 'resultado' as const, label: 'Resultado', icon: TractorIcon },
+          { key: 'resultado' as const,  label: 'Resultado',  icon: TractorIcon },
           { key: 'labores' as const,    label: 'Labores',    icon: ClipboardList },
           { key: 'insumos' as const,    label: 'Insumos',    icon: Beaker },
+          { key: 'monitoreos' as const, label: 'Monitoreos', icon: Camera },
         ].map((t) => (
           <button
             key={t.key}
@@ -296,6 +300,11 @@ export function LoteCampaniaDetallePage() {
             </ul>
           )}
         </div>
+      )}
+
+      {/* Monitoreos */}
+      {tab === 'monitoreos' && (
+        <MonitoreosPanel loteCampaniaId={id!} readonly={rolEnCuenta === 'propietario'} />
       )}
 
       <LaborSheet

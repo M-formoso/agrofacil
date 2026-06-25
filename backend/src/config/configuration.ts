@@ -1,3 +1,5 @@
+import { resolve } from 'path';
+
 export interface AppConfig {
   port: number;
   nodeEnv: 'development' | 'production' | 'test';
@@ -10,6 +12,10 @@ export interface AppConfig {
   };
   anthropic: {
     apiKey: string;
+  };
+  uploads: {
+    /** Carpeta absoluta donde caen los archivos subidos. En dev: ./uploads. En Railway: /data/uploads (volume montado). */
+    dir: string;
   };
 }
 
@@ -25,5 +31,8 @@ export default (): AppConfig => ({
   },
   anthropic: {
     apiKey: process.env.ANTHROPIC_API_KEY ?? '',
+  },
+  uploads: {
+    dir: resolve(process.env.UPLOADS_DIR ?? './uploads'),
   },
 });
