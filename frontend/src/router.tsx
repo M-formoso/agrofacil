@@ -7,7 +7,6 @@ import { LotesPage } from '@/pages/LotesPage';
 import { CampaniasPage } from '@/pages/CampaniasPage';
 import { CampaniaDetallePage } from '@/pages/CampaniaDetallePage';
 import { LoteCampaniaDetallePage } from '@/pages/LoteCampaniaDetallePage';
-import { CargaPage } from '@/pages/CargaPage';
 import { CultivosPage } from '@/pages/CultivosPage';
 import { InsumosPage } from '@/pages/InsumosPage';
 import { LluviasPage } from '@/pages/LluviasPage';
@@ -35,7 +34,6 @@ export const router = createBrowserRouter([
       { path: '/campanias', element: <CampaniasPage /> },
       { path: '/campanias/:id', element: <CampaniaDetallePage /> },
       { path: '/lotes-campania/:id', element: <LoteCampaniaDetallePage /> },
-      { path: '/carga', element: <CargaPage /> },
       { path: '/lluvias', element: <LluviasPage /> },
       { path: '/clima', element: <ClimaPage /> },
       { path: '/asistente', element: <AsistentePage /> },

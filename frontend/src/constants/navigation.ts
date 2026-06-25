@@ -1,5 +1,5 @@
 import {
-  Home, Tractor, Sprout, CalendarRange, ClipboardList,
+  Home, Tractor, Sprout, CalendarRange,
   Beaker, BarChart3, Wheat, CloudRain, CloudSun, Sparkles, UserPlus, FileText, Bell,
   type LucideIcon,
 } from 'lucide-react';
@@ -48,7 +48,6 @@ export const navGroups: NavGroup[] = [
     id: 'operacion',
     label: 'Operación',
     items: [
-      { to: '/carga',     label: 'Carga',        icon: ClipboardList, keywords: ['labores', 'insumos', 'voz', 'foto'], roles: ['ingeniero', 'operador'] },
       { to: '/lluvias',   label: 'Lluvias',      icon: CloudRain,     keywords: ['mm', 'agua', 'calendario'] },
       { to: '/clima',     label: 'Clima',        icon: CloudSun,      keywords: ['pronostico', 'temperatura', 'humedad', 'viento', 'open-meteo'] },
       { to: '/asistente', label: 'Asistente IA', icon: Sparkles,      keywords: ['chat', 'claude', 'preguntar', 'ayuda', 'ia'], roles: ['ingeniero', 'operador'] },

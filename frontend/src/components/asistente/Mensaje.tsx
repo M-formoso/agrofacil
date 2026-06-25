@@ -9,6 +9,8 @@ import { cn } from '@/lib/utils';
 export function Mensaje({ mensaje }: { mensaje: MensajeType }) {
   const esUser = mensaje.rol === 'user';
   const adjuntos = mensaje.metadata?.adjuntos ?? [];
+  const imagenes = adjuntos.filter((a) => a.tipo === 'image');
+  const audios = adjuntos.filter((a) => a.tipo === 'audio');
 
   return (
     <motion.div
@@ -29,9 +31,9 @@ export function Mensaje({ mensaje }: { mensaje: MensajeType }) {
           esUser ? 'bg-primary text-primary-foreground' : 'bg-surface border border-border text-foreground',
         )}
       >
-        {adjuntos.length > 0 && (
-          <div className={cn('grid gap-1.5', adjuntos.length === 1 ? 'grid-cols-1' : 'grid-cols-2')}>
-            {adjuntos.map((a) => (
+        {imagenes.length > 0 && (
+          <div className={cn('grid gap-1.5', imagenes.length === 1 ? 'grid-cols-1' : 'grid-cols-2')}>
+            {imagenes.map((a) => (
               <a
                 key={a.url}
                 href={urlAdjuntoAbsoluta(a.url)}
@@ -49,6 +51,17 @@ export function Mensaje({ mensaje }: { mensaje: MensajeType }) {
             ))}
           </div>
         )}
+
+        {audios.map((a) => (
+          <audio
+            key={a.url}
+            controls
+            preload="metadata"
+            className={cn('w-full h-9 rounded-lg', esUser && 'bg-white/15')}
+          >
+            <source src={urlAdjuntoAbsoluta(a.url)} type={a.mediaType} />
+          </audio>
+        ))}
 
         {mensaje.contenido && (
           esUser ? (

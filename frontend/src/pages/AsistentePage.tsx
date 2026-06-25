@@ -3,11 +3,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   MessageSquarePlus, Trash2, Loader2, ArrowUp, Sparkles, BarChart3,
-  CloudRain, Calculator, Wheat, Image as ImageIcon, Mic, MicOff, X,
+  CloudRain, Calculator, Wheat, Image as ImageIcon, Mic, MicOff, Sprout, X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { asistenteService, type Conversacion, type Mensaje as MensajeType } from '@/services/asistenteService';
+import { lotesCampaniaService } from '@/services/lotesCampaniaService';
 import { extraerMensajeError } from '@/lib/apiClient';
 import { Mensaje } from '@/components/asistente/Mensaje';
 import { Logo } from '@/components/layout/Logo';
@@ -205,20 +206,29 @@ function ChatArea({ mensajes, conversacionId }: { mensajes: MensajeType[]; conve
   const qc = useQueryClient();
   const [borrador, setBorrador] = useState('');
   const [imagenes, setImagenes] = useState<File[]>([]);
+  const [audioPendiente, setAudioPendiente] = useState<Blob | null>(null);
+  const [loteCampaniaCtxId, setLoteCampaniaCtxId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const dictado = useDictado();
   const ultimoLargoFinal = useRef(0);
 
+  const { data: lotesCampania } = useQuery({
+    queryKey: ['lotes-campania', { limit: 100 }],
+    queryFn: () => lotesCampaniaService.listar({ limit: 100 }),
+  });
+  const ctxLote = lotesCampania?.items.find((l) => l.id === loteCampaniaCtxId);
+
   const enviar = useMutation({
-    mutationFn: ({ texto, archivos }: { texto: string; archivos: File[] }) =>
-      asistenteService.enviarMensaje(conversacionId, texto, archivos),
+    mutationFn: ({ texto, archivos, audio }: { texto: string; archivos: File[]; audio: Blob | null }) =>
+      asistenteService.enviarMensaje(conversacionId, texto, { imagenes: archivos, audio }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['asistente-conversacion', conversacionId] });
       qc.invalidateQueries({ queryKey: ['asistente-conversaciones'] });
       setBorrador('');
       setImagenes([]);
+      setAudioPendiente(null);
       dictado.resetear();
       ultimoLargoFinal.current = 0;
       setTimeout(() => inputRef.current?.focus(), 100);
@@ -251,10 +261,8 @@ function ChatArea({ mensajes, conversacionId }: { mensajes: MensajeType[]; conve
     if (dictado.error) {
       const msg =
         dictado.error === 'not-allowed'
-          ? 'Tenés que habilitar el micrófono para usar el dictado.'
-          : dictado.error === 'no-speech'
-            ? 'No te escuché. Probá hablar más cerca del mic.'
-            : `Error de dictado: ${dictado.error}`;
+          ? 'Tenés que habilitar el micrófono para grabar.'
+          : `Error de mic: ${dictado.error}`;
       toast.error(msg);
     }
   }, [dictado.error]);
@@ -285,19 +293,42 @@ function ChatArea({ mensajes, conversacionId }: { mensajes: MensajeType[]; conve
     setImagenes((prev) => prev.filter((_, idx) => idx !== i));
   };
 
-  const enviarMensaje = () => {
-    const texto = borrador.trim();
-    if ((!texto && imagenes.length === 0) || enviar.isPending) return;
-    if (dictado.grabando) dictado.detener();
-    enviar.mutate({ texto, archivos: imagenes });
+  /** Si está dictando, primero cerramos para capturar el último audio + texto. */
+  const cerrarDictadoSiActivo = async (): Promise<{ texto: string; audio: Blob | null }> => {
+    if (!dictado.grabando) return { texto: '', audio: audioPendiente };
+    const r = await dictado.detener();
+    return { texto: r.texto, audio: r.audio };
   };
 
-  const toggleDictado = () => {
+  const enviarMensaje = async () => {
+    if (enviar.isPending) return;
+    const finalDictado = await cerrarDictadoSiActivo();
+
+    // Si dictamos por voz y se cerró ahora, el texto puede no estar todavía en el borrador
+    // (porque el useEffect aún no corrió). Aseguramos que esté.
+    const textoBruto = borrador.trim() || finalDictado.texto;
+    const audioFinal = finalDictado.audio ?? audioPendiente;
+
+    // Prepender contexto del lote si está vinculado
+    const prefijo = ctxLote
+      ? `[Hablando del lote ${ctxLote.lote?.nombre ?? '?'} · ${ctxLote.cultivo?.nombre ?? '?'} · ${ctxLote.campania?.nombre ?? '?'}] `
+      : '';
+    const texto = (prefijo + textoBruto).trim();
+
+    if (!texto && imagenes.length === 0 && !audioFinal) return;
+
+    enviar.mutate({ texto, archivos: imagenes, audio: audioFinal });
+  };
+
+  const toggleDictado = async () => {
     if (dictado.grabando) {
-      dictado.detener();
+      const r = await dictado.detener();
+      if (r.audio) setAudioPendiente(r.audio);
     } else {
+      // Si había un audio anterior sin enviar, lo descartamos al re-grabar.
+      setAudioPendiente(null);
       ultimoLargoFinal.current = 0;
-      dictado.iniciar();
+      await dictado.iniciar();
     }
   };
 
@@ -307,7 +338,7 @@ function ChatArea({ mensajes, conversacionId }: { mensajes: MensajeType[]; conve
     <>
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 lg:p-6 min-h-0">
         {sinMensajes ? (
-          <PromptsIniciales onElegir={(t) => enviar.mutate({ texto: t, archivos: [] })} disabled={enviar.isPending} />
+          <PromptsIniciales onElegir={(t) => enviar.mutate({ texto: t, archivos: [], audio: null })} disabled={enviar.isPending} />
         ) : (
           <div className="space-y-4 max-w-3xl mx-auto">
             {mensajes.map((m) => (
@@ -339,6 +370,34 @@ function ChatArea({ mensajes, conversacionId }: { mensajes: MensajeType[]; conve
       {/* Input */}
       <div className="border-t border-border p-3 lg:p-4">
         <div className="max-w-3xl mx-auto space-y-2">
+          {/* Selector de lote-campaña como contexto */}
+          {lotesCampania && lotesCampania.items.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <Sprout className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <select
+                value={loteCampaniaCtxId ?? ''}
+                onChange={(e) => setLoteCampaniaCtxId(e.target.value || null)}
+                className="text-xs h-7 px-2 rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring max-w-full"
+              >
+                <option value="">¿Hablamos de algún lote? (opcional)</option>
+                {lotesCampania.items.map((lc) => (
+                  <option key={lc.id} value={lc.id}>
+                    {lc.lote?.nombre} · {lc.cultivo?.nombre} · {lc.campania?.nombre}
+                  </option>
+                ))}
+              </select>
+              {ctxLote && (
+                <button
+                  type="button"
+                  onClick={() => setLoteCampaniaCtxId(null)}
+                  className="text-[10px] uppercase tracking-wider text-muted-foreground hover:text-destructive"
+                >
+                  quitar
+                </button>
+              )}
+            </div>
+          )}
+
           {/* Preview de imágenes pendientes */}
           {imagenes.length > 0 && (
             <ul className="flex gap-2 overflow-x-auto pb-1">
@@ -362,6 +421,26 @@ function ChatArea({ mensajes, conversacionId }: { mensajes: MensajeType[]; conve
             </ul>
           )}
 
+          {/* Preview del audio grabado pendiente de enviar */}
+          {audioPendiente && !dictado.grabando && (
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-primary/30 bg-primary/5">
+              <Mic className="h-3.5 w-3.5 text-primary shrink-0" />
+              <audio
+                src={URL.createObjectURL(audioPendiente)}
+                controls
+                className="h-7 flex-1 min-w-0"
+              />
+              <button
+                type="button"
+                onClick={() => setAudioPendiente(null)}
+                className="h-6 w-6 rounded-md hover:bg-muted flex items-center justify-center shrink-0"
+                aria-label="Descartar audio"
+              >
+                <X className="h-3 w-3 text-muted-foreground" />
+              </button>
+            </div>
+          )}
+
           <div className="flex items-end gap-2">
             <input
               ref={fileRef}
@@ -382,7 +461,7 @@ function ChatArea({ mensajes, conversacionId }: { mensajes: MensajeType[]; conve
               <ImageIcon className="h-4 w-4 text-muted-foreground" />
             </button>
 
-            {dictado.soportado && (
+            {dictado.soportaGrabacion && (
               <button
                 type="button"
                 onClick={toggleDictado}
@@ -425,7 +504,7 @@ function ChatArea({ mensajes, conversacionId }: { mensajes: MensajeType[]; conve
             />
             <Button
               onClick={enviarMensaje}
-              disabled={(!borrador.trim() && imagenes.length === 0) || enviar.isPending}
+              disabled={(!borrador.trim() && imagenes.length === 0 && !audioPendiente && !dictado.grabando) || enviar.isPending}
               size="icon"
               className="h-11 w-11 shrink-0"
               aria-label="Enviar"

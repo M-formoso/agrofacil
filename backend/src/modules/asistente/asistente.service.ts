@@ -8,12 +8,9 @@ import { ClaudeClient, type ClaudeMessage, type ImagenAdjunta } from './claude.c
 import { ContextService } from './context.service';
 import { ToolExecutorService } from './tool-executor.service';
 
-interface AdjuntoMensaje {
-  tipo: 'image';
-  url: string;
-  mediaType: ImagenAdjunta['mediaType'];
-  nombre: string;
-}
+type AdjuntoMensaje =
+  | { tipo: 'image'; url: string; mediaType: ImagenAdjunta['mediaType']; nombre: string }
+  | { tipo: 'audio'; url: string; mediaType: string; nombre: string };
 
 /**
  * Orquestador del asistente IA agronómico.
@@ -82,6 +79,7 @@ export class AsistenteService {
     conversacionId: string,
     contenido: string,
     archivosImagen: Express.Multer.File[] = [],
+    archivoAudio?: Express.Multer.File,
   ) {
     const conv = await this.obtenerConversacion(cuentaId, usuarioId, conversacionId);
 
@@ -105,6 +103,18 @@ export class AsistenteService {
       } catch (err) {
         this.logger.error(`No pude leer la imagen ${file.path}: ${(err as Error).message}`);
       }
+    }
+
+    // El audio se guarda como adjunto reproducible. Claude no entiende
+    // audio nativo, la transcripción ya viene en `contenido` desde el
+    // cliente (Web Speech API), así que sólo lo persistimos.
+    if (archivoAudio) {
+      adjuntos.push({
+        tipo: 'audio',
+        url: `/uploads/asistente/${archivoAudio.filename}`,
+        mediaType: archivoAudio.mimetype || 'audio/webm',
+        nombre: archivoAudio.originalname,
+      });
     }
 
     // 2) Mensaje del usuario en DB (con adjuntos en metadata)
@@ -136,9 +146,12 @@ export class AsistenteService {
       }));
 
     // 5) Agregar el mensaje recién creado CON sus imágenes
+    const placeholder =
+      imagenesParaClaude.length > 0 ? 'Mirá esto.' :
+      archivoAudio ? '(El productor mandó una nota de voz pero no se pudo transcribir.)' : '';
     claudeMessages.push({
       role: 'user',
-      content: contenido || (imagenesParaClaude.length > 0 ? 'Mirá esto.' : ''),
+      content: contenido || placeholder,
       imagenes: imagenesParaClaude.length > 0 ? imagenesParaClaude : undefined,
     });
 
