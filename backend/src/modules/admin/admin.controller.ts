@@ -91,8 +91,12 @@ export class AdminController {
 
   @Patch('usuarios/:id')
   @HttpCode(HttpStatus.OK)
-  actualizarUsuario(@Param('id', ParseUUIDPipe) id: string, @Body() dto: ActualizarUsuarioDto) {
-    return this.usuarios.actualizar(id, dto);
+  actualizarUsuario(
+    @Usuario() solicitante: UsuarioActual,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ActualizarUsuarioDto,
+  ) {
+    return this.usuarios.actualizar(id, solicitante.id, dto);
   }
 
   @Post('usuarios/:id/reenviar-invitacion')

@@ -166,13 +166,28 @@ export class UsuariosAdminService {
   }
 
   /// Actualiza datos básicos del usuario. Si cambia el email, valida unicidad.
-  async actualizar(usuarioId: string, dto: { nombre?: string; email?: string; rolGlobal?: 'superadmin' | 'ingeniero' | 'propietario' }) {
+  /// Bloquea el caso "superadmin bajándose el rol a sí mismo" — si pasa, se queda
+  /// fuera del panel sin manera de volver.
+  async actualizar(
+    usuarioId: string,
+    solicitanteId: string,
+    dto: { nombre?: string; email?: string; rolGlobal?: 'superadmin' | 'ingeniero' | 'propietario' },
+  ) {
     const usuario = await this.prisma.usuario.findUnique({ where: { id: usuarioId } });
     if (!usuario) throw new NotFoundException('Usuario no encontrado');
 
     if (dto.email && dto.email !== usuario.email) {
       const existente = await this.prisma.usuario.findFirst({ where: { email: dto.email, id: { not: usuarioId } } });
       if (existente) throw new ConflictException('Ya existe un usuario con ese email');
+    }
+
+    if (
+      usuarioId === solicitanteId &&
+      dto.rolGlobal !== undefined &&
+      dto.rolGlobal !== 'superadmin' &&
+      usuario.rolGlobal === 'superadmin'
+    ) {
+      throw new ConflictException('No podés cambiar tu propio rol global');
     }
 
     const actualizado = await this.prisma.usuario.update({

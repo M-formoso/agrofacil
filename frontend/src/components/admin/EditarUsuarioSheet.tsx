@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Sheet } from '@/components/ui/Sheet';
 import { adminService, type UsuarioAdmin } from '@/services/adminService';
 import { extraerMensajeError } from '@/lib/apiClient';
+import { useAuthStore } from '@/stores/authStore';
 
 const schema = z.object({
   nombre: z.string().trim().min(1, 'Nombre requerido'),
@@ -28,6 +29,8 @@ interface Props {
 
 export function EditarUsuarioSheet({ open, usuario, onClose }: Props) {
   const qc = useQueryClient();
+  const miUsuarioId = useAuthStore((s) => s.usuario?.id);
+  const esYoMismo = usuario?.id === miUsuarioId;
   const {
     register,
     handleSubmit,
@@ -80,15 +83,17 @@ export function EditarUsuarioSheet({ open, usuario, onClose }: Props) {
           <select
             id="rolGlobal"
             {...register('rolGlobal')}
-            className="w-full h-9 px-3 rounded-md border border-border bg-surface text-sm"
+            disabled={esYoMismo}
+            className="w-full h-9 px-3 rounded-md border border-border bg-surface text-sm disabled:bg-muted disabled:cursor-not-allowed"
           >
             <option value="ingeniero">Ingeniero</option>
             <option value="propietario">Propietario</option>
             <option value="superadmin">Superadmin</option>
           </select>
           <p className="text-[11px] text-muted-foreground">
-            El rol global determina si el usuario puede entrar al panel admin (superadmin). En las cuentas,
-            el rol específico se maneja en el detalle de cada cuenta.
+            {esYoMismo
+              ? '⚠️ No podés cambiar tu propio rol global desde el panel — quedarías afuera sin manera de volver.'
+              : 'El rol global determina si el usuario puede entrar al panel admin (superadmin). En las cuentas, el rol específico se maneja en el detalle de cada cuenta.'}
           </p>
         </div>
 
