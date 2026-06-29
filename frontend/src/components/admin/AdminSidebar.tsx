@@ -1,7 +1,8 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Building2, Users, Mail, Receipt, TrendingUp } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { Logo } from '@/components/layout/Logo';
+import { LayoutDashboard, Building2, Users, Mail, Receipt, TrendingUp, LogOut, ShieldCheck } from 'lucide-react';
+import { LogoLockup } from '@/components/layout/Logo';
+import { useAuthStore } from '@/stores/authStore';
 import { cn } from '@/lib/utils';
 
 interface AdminNavItem {
@@ -19,30 +20,33 @@ const items: AdminNavItem[] = [
   { to: '/admin/facturacion',  label: 'Facturación',  icon: Receipt },
 ];
 
-/// Sidebar del panel superadmin — tema oscuro distinto del cliente.
-/// Logo real arriba en blanco.
+/// Mismo lenguaje visual que el sidebar del cliente (glass-green).
+/// La diferencia: badge "PANEL ADMIN" para que sepas siempre dónde estás.
 export function AdminSidebar() {
+  const usuario = useAuthStore((s) => s.usuario);
+  const logout = useAuthStore((s) => s.logout);
+
   return (
-    <aside className="hidden lg:flex w-60 shrink-0 h-screen sticky top-0 flex-col p-4">
-      <div className="relative flex-1 flex flex-col bg-slate-900 text-slate-100 rounded-2xl shadow-lift overflow-hidden">
-        {/* Brand: logo + wordmark */}
-        <div className="px-5 pt-5 pb-5 shrink-0">
-          <div className="flex items-center gap-2.5">
-            <Logo size={26} variant="light" />
-            <div>
-              <p className="text-base font-bold leading-none">
-                <span className="text-slate-300">Agro</span>
-                <span className="text-white">Facil</span>
-              </p>
-              <p className="text-[9px] uppercase tracking-[0.18em] text-emerald-400/90 mt-1 font-semibold">
-                Panel admin
-              </p>
-            </div>
+    <aside className="hidden lg:flex w-64 shrink-0 h-screen sticky top-0 flex-col p-4">
+      <div className="relative flex-1 flex flex-col glass-green rounded-2xl shadow-glass overflow-hidden">
+        {/* Brand */}
+        <div className="px-5 pt-5 pb-3 shrink-0">
+          <LogoLockup size={30} variant="light" animated />
+          <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white/15 border border-white/20">
+            <ShieldCheck className="h-3 w-3 text-white" />
+            <span className="text-[9px] uppercase tracking-[0.16em] font-semibold text-white">Panel admin</span>
           </div>
         </div>
 
+        {/* Sesión */}
+        <div className="px-4 pb-4 border-b border-white/15 shrink-0">
+          <p className="text-[10px] uppercase tracking-wider text-white/60">Sesión</p>
+          <p className="text-sm font-medium text-white truncate">{usuario?.nombre ?? '—'}</p>
+          <p className="text-[11px] text-white/70 truncate">{usuario?.email}</p>
+        </div>
+
         {/* Nav */}
-        <nav className="flex-1 overflow-y-auto px-3 pb-3 space-y-0.5">
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
           {items.map((item) => (
             <NavLink
               key={item.to}
@@ -52,8 +56,8 @@ export function AdminSidebar() {
                 cn(
                   'group relative flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all',
                   isActive
-                    ? 'bg-white/10 text-white'
-                    : 'text-slate-400 hover:bg-white/5 hover:text-white',
+                    ? 'bg-white/15 text-white'
+                    : 'text-white/75 hover:bg-white/10 hover:text-white',
                 )
               }
             >
@@ -62,11 +66,11 @@ export function AdminSidebar() {
                   {isActive && (
                     <motion.div
                       layoutId="admin-sidebar-active"
-                      className="absolute left-0 inset-y-2 w-[3px] bg-emerald-400 rounded-r-full"
+                      className="absolute left-0 inset-y-1.5 w-1 bg-white rounded-r-full"
                       transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                     />
                   )}
-                  <item.icon className={cn('h-4 w-4 transition', isActive ? 'text-emerald-300' : 'text-slate-500 group-hover:text-slate-300')} />
+                  <item.icon className="h-4 w-4" />
                   <span>{item.label}</span>
                 </>
               )}
@@ -75,13 +79,14 @@ export function AdminSidebar() {
         </nav>
 
         {/* Footer */}
-        <div className="px-4 py-3 border-t border-white/10 shrink-0">
-          <p className="text-[10px] text-slate-500 leading-relaxed">
-            AgroFácil <span className="text-slate-600">v1.0</span>
-          </p>
-          <p className="text-[10px] text-slate-600 leading-relaxed mt-0.5">
-            Gestión agropecuaria
-          </p>
+        <div className="p-3 border-t border-white/15 shrink-0">
+          <button
+            onClick={logout}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-white/75 hover:bg-white/10 hover:text-white transition"
+          >
+            <LogOut className="h-4 w-4" />
+            <span>Salir</span>
+          </button>
         </div>
       </div>
     </aside>
