@@ -25,6 +25,7 @@ export function LoginPage() {
   const navigate = useNavigate();
   const setTokens = useAuthStore((s) => s.setTokens);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const usuario = useAuthStore((s) => s.usuario);
 
   const {
     register,
@@ -40,12 +41,14 @@ export function LoginPage() {
     onSuccess: (res) => {
       setTokens(res.accessToken, res.refreshToken, res.usuario);
       toast.success(`Bienvenido, ${res.usuario.nombre}`);
-      navigate('/', { replace: true });
+      navigate(res.usuario.rolGlobal === 'superadmin' ? '/admin' : '/', { replace: true });
     },
     onError: (err) => toast.error(extraerMensajeError(err)),
   });
 
-  if (isAuthenticated) return <Navigate to="/" replace />;
+  if (isAuthenticated) {
+    return <Navigate to={usuario?.rolGlobal === 'superadmin' ? '/admin' : '/'} replace />;
+  }
 
   return (
     <div className="min-h-screen relative overflow-hidden flex items-center justify-center px-4">

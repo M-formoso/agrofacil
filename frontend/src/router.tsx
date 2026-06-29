@@ -1,6 +1,8 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { LoginPage } from '@/pages/auth/LoginPage';
+import { ActivarCuentaPage } from '@/pages/auth/ActivarCuentaPage';
 import { RutaProtegida } from '@/components/layout/RutaProtegida';
+import { RutaSuperAdmin } from '@/components/layout/RutaSuperAdmin';
 import { InicioPage } from '@/pages/InicioPage';
 import { EstablecimientosPage } from '@/pages/EstablecimientosPage';
 import { LotesPage } from '@/pages/LotesPage';
@@ -19,10 +21,23 @@ import { LoteDetallePage } from '@/pages/LoteDetallePage';
 import { ReportesPage } from '@/pages/ReportesPage';
 import { ReportePublicoPage } from '@/pages/ReportePublicoPage';
 import { AlertasPage } from '@/pages/AlertasPage';
+import { AdminDashboardPage } from '@/pages/admin/AdminDashboardPage';
+import { AdminCuentasPage } from '@/pages/admin/AdminCuentasPage';
+import { AdminUsuariosPage } from '@/pages/admin/AdminUsuariosPage';
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
+  { path: '/activar/:token', element: <ActivarCuentaPage /> },
   { path: '/r/:token', element: <ReportePublicoPage /> },
+  {
+    path: '/admin',
+    element: <RutaSuperAdmin />,
+    children: [
+      { index: true, element: <AdminDashboardPage /> },
+      { path: 'cuentas', element: <AdminCuentasPage /> },
+      { path: 'usuarios', element: <AdminUsuariosPage /> },
+    ],
+  },
   {
     element: <RutaProtegida />,
     children: [

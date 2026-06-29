@@ -39,8 +39,8 @@ agrofacil/
    - **Root Directory**: `backend`
    - **Watch Paths**: `backend/**` (opcional — para que solo redeploye cuando cambia esa carpeta)
 3. **Build & Deploy** debe tomar lo que dice `backend/railway.toml`:
-   - Build: `npm ci && npx prisma generate && npm run build`
-   - Start: `npx prisma migrate deploy && node dist/main.js`
+   - Build: `npm install --include=dev && npx prisma generate && npm run build`
+   - Start: `npx prisma migrate deploy && npm run db:seed && node dist/main.js`
    - Healthcheck: `/api/v1/health`
 
 ### 3.2 Variables de entorno del backend
@@ -57,6 +57,10 @@ En `Variables` del servicio `backend`, agregá (los `${{ ... }}` son **referenci
 | `CORS_ORIGIN` | `https://${{ frontend.RAILWAY_PUBLIC_DOMAIN }}` (la armás **después** de crear el frontend; ver paso 5) |
 | `NODE_ENV` | `production` |
 | `ANTHROPIC_API_KEY` | (opcional, para la fase de voz/foto) |
+| `SUPERADMIN_EMAIL` | email con el que vas a loguearte al panel `/admin` |
+| `SUPERADMIN_PASSWORD` | contraseña fuerte (guardala en un gestor) |
+| `SUPERADMIN_NOMBRE` | tu nombre para mostrar (ej: `Mateo Formoso`) |
+| `APP_PUBLIC_URL` | `https://${{ frontend.RAILWAY_PUBLIC_DOMAIN }}` — base para armar links de activación en emails |
 
 ### 3.3 Generar dominio público
 
@@ -104,29 +108,24 @@ Ahora que el frontend tiene dominio:
 
 ## 6. Primera migración + seed
 
-El backend corre `npx prisma migrate deploy` en cada start (definido en `railway.toml`), así que las migraciones se aplican solas en el primer deploy.
+El backend corre **`npx prisma migrate deploy && npm run db:seed`** en cada start (definido en `backend/railway.toml`), así que tanto las migraciones como el seed se aplican solos en cada deploy.
 
-**Para correr el seed** (cuenta + usuario demo + catálogo de cultivos):
+El seed es **idempotente** (todo con `upsert`):
+- Crea/actualiza el superadmin a partir de `SUPERADMIN_EMAIL` / `SUPERADMIN_PASSWORD` / `SUPERADMIN_NOMBRE`. Si no están seteadas, salta este paso con un warning en los logs.
+- Crea/actualiza la cuenta demo `demo@agrofacil.dev` / `agrofacil123`.
+- Crea/actualiza el catálogo base de cultivos.
 
-### Opción A — desde tu máquina contra la DB de Railway
+> 💡 Como es idempotente, podés cambiar la `SUPERADMIN_PASSWORD` en Variables y al próximo deploy se rotea sola.
+
+### Si querés correr el seed manualmente contra Railway desde tu máquina
 1. En el servicio Postgres → `Connect` → copiá la `DATABASE_PUBLIC_URL`.
 2. En tu terminal local:
    ```bash
    cd backend
-   DATABASE_URL="postgresql://...railway..." npm run db:seed
+   DATABASE_URL="postgresql://...railway..." \
+     SUPERADMIN_EMAIL="..." SUPERADMIN_PASSWORD="..." SUPERADMIN_NOMBRE="..." \
+     npm run db:seed
    ```
-
-### Opción B — agregar el seed al startCommand del backend (una vez)
-En `Settings` del backend, sobreescribí temporalmente el Start Command:
-```
-npx prisma migrate deploy && npm run db:seed && node dist/main.js
-```
-Después del primer deploy, volvelo a:
-```
-npx prisma migrate deploy && node dist/main.js
-```
-
-> El seed está hecho con `upsert`, así que correrlo más de una vez es seguro.
 
 ---
 

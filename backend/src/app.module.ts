@@ -28,7 +28,10 @@ import { ReportesModule } from './modules/reportes/reportes.module';
 import { AlertasModule } from './modules/alertas/alertas.module';
 import { InsumosModule } from './modules/insumos/insumos.module';
 import { HealthModule } from './modules/health/health.module';
+import { AdminModule } from './modules/admin/admin.module';
+import { EmailModule } from './modules/email/email.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+import { SuperAdminGuard } from './common/guards/super-admin.guard';
 
 @Module({
   imports: [
@@ -79,11 +82,14 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
     ReportesModule,
     AlertasModule,
     InsumosModule,
+    EmailModule,
+    AdminModule,
   ],
   providers: [
     { provide: APP_PIPE, useClass: ZodValidationPipe },
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: SuperAdminGuard },
   ],
 })
 export class AppModule {}
