@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Drawer } from 'vaul';
 import { NavLink } from 'react-router-dom';
 import { LogOut, Menu } from 'lucide-react';
-import { filtrarGruposPorRol, navGroups } from '@/constants/navigation';
+import { filtrarGruposPorPermisos, navGroups } from '@/constants/navigation';
 import { LogoLockup } from './Logo';
 import { AccountSwitcher } from './AccountSwitcher';
 import { useAuthStore } from '@/stores/authStore';
@@ -13,7 +13,11 @@ export function MobileDrawer() {
   const usuario = useAuthStore((s) => s.usuario);
   const logout = useAuthStore((s) => s.logout);
 
-  const grupos = filtrarGruposPorRol(navGroups, usuario?.rolEnCuentaActiva);
+  const grupos = filtrarGruposPorPermisos(
+    navGroups,
+    usuario?.rolEnCuentaActiva,
+    usuario?.modulosPermitidos,
+  );
 
   return (
     <Drawer.Root open={open} onOpenChange={setOpen}>

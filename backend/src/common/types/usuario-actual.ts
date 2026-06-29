@@ -15,6 +15,8 @@ export interface UsuarioActual {
   cuentaId: string;
   /** Rol del usuario en la cuenta activa. */
   rolEnCuentaActiva: RolEnCuenta;
+  /** Módulos explícitamente permitidos en la cuenta activa. Vacío = usa defaults del rol. */
+  modulosPermitidos: string[];
   /** Todas las cuentas a las que el usuario tiene acceso. */
   membresias: MembresiaResumen[];
   /** Si es true, el superadmin está viendo el sistema como otra cuenta. */

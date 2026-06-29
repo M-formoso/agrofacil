@@ -22,6 +22,7 @@ import { ReportesPage } from '@/pages/ReportesPage';
 import { ReportePublicoPage } from '@/pages/ReportePublicoPage';
 import { AlertasPage } from '@/pages/AlertasPage';
 import { RankingPage } from '@/pages/RankingPage';
+import { EquipoPage } from '@/pages/EquipoPage';
 import { AdminDashboardPage } from '@/pages/admin/AdminDashboardPage';
 import { AdminCuentasPage } from '@/pages/admin/AdminCuentasPage';
 import { AdminCuentaDetallePage } from '@/pages/admin/AdminCuentaDetallePage';
@@ -62,6 +63,7 @@ export const router = createBrowserRouter([
       { path: '/resumen', element: <ResumenPage /> },
       { path: '/ranking', element: <RankingPage /> },
       { path: '/propietarios', element: <PropietariosPage /> },
+      { path: '/equipo', element: <EquipoPage /> },
       { path: '/reportes', element: <ReportesPage /> },
       { path: '/alertas', element: <AlertasPage /> },
     ],

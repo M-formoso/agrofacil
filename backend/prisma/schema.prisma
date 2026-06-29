@@ -99,6 +99,10 @@ model UsuarioCuenta {
   cuentaId  String      @map("cuenta_id")
   rol       RolEnCuenta
   activo    Boolean     @default(true)
+  /// Lista explícita de módulos que el usuario puede ver en esta cuenta.
+  /// Vacío = usa los defaults del rol (ver constants/modulos.ts).
+  /// No-vacío = allowlist exacta (sobreescribe defaults).
+  modulosPermitidos String[] @default([]) @map("modulos_permitidos")
   createdAt DateTime    @default(now()) @map("created_at")
 
   usuario   Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)

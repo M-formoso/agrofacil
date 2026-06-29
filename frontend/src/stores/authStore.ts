@@ -17,6 +17,8 @@ export interface UsuarioActual {
   rolGlobal: RolGlobal;
   cuentaId: string;
   rolEnCuentaActiva: RolEnCuenta;
+  /** Módulos explícitos. Vacío = usa los defaults del rol. */
+  modulosPermitidos: string[];
   membresias: MembresiaResumen[];
   impersonating?: boolean;
   impersonatingCuentaNombre?: string;

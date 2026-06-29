@@ -58,6 +58,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         rolGlobal: usuario.rolGlobal,
         cuentaId: cuentaTarget.id,
         rolEnCuentaActiva: 'ingeniero',
+        modulosPermitidos: [],
         membresias: usuario.membresias.map((m) => ({
           cuentaId: m.cuentaId,
           cuentaNombre: m.cuenta.nombre,
@@ -84,6 +85,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       rolGlobal: usuario.rolGlobal,
       cuentaId: membresiaActiva.cuentaId,
       rolEnCuentaActiva: membresiaActiva.rol,
+      modulosPermitidos: membresiaActiva.modulosPermitidos,
       membresias: usuario.membresias.map((m) => ({
         cuentaId: m.cuentaId,
         cuentaNombre: m.cuenta.nombre,

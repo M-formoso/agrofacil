@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronDown, LogOut, Search } from 'lucide-react';
-import { filtrarGruposPorRol, navGroups, type NavGroup } from '@/constants/navigation';
+import { filtrarGruposPorPermisos, navGroups, type NavGroup } from '@/constants/navigation';
 import { LogoLockup } from './Logo';
 import { AccountSwitcher } from './AccountSwitcher';
 import { useAuthStore } from '@/stores/authStore';
@@ -31,7 +31,11 @@ export function Sidebar() {
   const logout = useAuthStore((s) => s.logout);
   const openPalette = useCommandPalette((s) => s.setOpen);
 
-  const grupos = filtrarGruposPorRol(navGroups, usuario?.rolEnCuentaActiva);
+  const grupos = filtrarGruposPorPermisos(
+    navGroups,
+    usuario?.rolEnCuentaActiva,
+    usuario?.modulosPermitidos,
+  );
   const [colapsados, setColapsados] = useState<Record<string, boolean>>(() => leerEstado(grupos));
 
   useEffect(() => {

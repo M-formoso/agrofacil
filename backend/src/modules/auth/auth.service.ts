@@ -109,6 +109,7 @@ export class AuthService {
       rolGlobal: superadmin.rolGlobal,
       cuentaId: cuenta.id,
       rolEnCuentaActiva: 'ingeniero',
+      modulosPermitidos: [],
       membresias: [],
       impersonating: true,
       impersonatingCuentaNombre: cuenta.nombre,
@@ -273,6 +274,7 @@ export class AuthService {
       rolGlobal: usuario.rolGlobal,
       cuentaId: activa.cuentaId,
       rolEnCuentaActiva: activa.rol,
+      modulosPermitidos: activa.modulosPermitidos,
       membresias: usuario.membresias.map((m) => ({
         cuentaId: m.cuentaId,
         cuentaNombre: m.cuenta.nombre,
