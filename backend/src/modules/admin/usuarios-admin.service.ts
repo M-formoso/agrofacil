@@ -165,6 +165,46 @@ export class UsuariosAdminService {
     return { id: u.id, activo: u.activo };
   }
 
+  /// Actualiza datos básicos del usuario. Si cambia el email, valida unicidad.
+  async actualizar(usuarioId: string, dto: { nombre?: string; email?: string; rolGlobal?: 'superadmin' | 'ingeniero' | 'propietario' }) {
+    const usuario = await this.prisma.usuario.findUnique({ where: { id: usuarioId } });
+    if (!usuario) throw new NotFoundException('Usuario no encontrado');
+
+    if (dto.email && dto.email !== usuario.email) {
+      const existente = await this.prisma.usuario.findFirst({ where: { email: dto.email, id: { not: usuarioId } } });
+      if (existente) throw new ConflictException('Ya existe un usuario con ese email');
+    }
+
+    const actualizado = await this.prisma.usuario.update({
+      where: { id: usuarioId },
+      data: {
+        ...(dto.nombre !== undefined && { nombre: dto.nombre }),
+        ...(dto.email !== undefined && { email: dto.email }),
+        ...(dto.rolGlobal !== undefined && { rolGlobal: dto.rolGlobal }),
+      },
+    });
+    return {
+      id: actualizado.id,
+      email: actualizado.email,
+      nombre: actualizado.nombre,
+      rolGlobal: actualizado.rolGlobal,
+      activo: actualizado.activo,
+    };
+  }
+
+  /// Cambia el rol de una membresía (ingeniero / propietario / operador en una cuenta puntual).
+  async actualizarMembresia(usuarioId: string, cuentaId: string, rol: 'ingeniero' | 'propietario' | 'operador') {
+    const membresia = await this.prisma.usuarioCuenta.findUnique({
+      where: { usuarioId_cuentaId: { usuarioId, cuentaId } },
+    });
+    if (!membresia) throw new NotFoundException('Membresía no encontrada');
+    const actualizado = await this.prisma.usuarioCuenta.update({
+      where: { id: membresia.id },
+      data: { rol },
+    });
+    return { id: actualizado.id, rol: actualizado.rol };
+  }
+
   /// Quita la membresía de un usuario en una cuenta (soft-delete activo=false).
   /// No borra al usuario — sólo le saca el acceso a esa cuenta.
   async quitarMembresia(usuarioId: string, cuentaId: string) {

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Loader2, UserMinus, Eye, Building2, Sprout, CalendarRange } from 'lucide-react';
+import { ArrowLeft, Loader2, UserMinus, Eye, Building2, Sprout, CalendarRange, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,8 @@ import { adminService } from '@/services/adminService';
 import { useAuthStore } from '@/stores/authStore';
 import { extraerMensajeError } from '@/lib/apiClient';
 import { cn } from '@/lib/utils';
+import { EditarCuentaSheet } from '@/components/admin/EditarCuentaSheet';
+import type { RolEnCuenta } from '@/stores/authStore';
 
 const rolLabel: Record<string, string> = {
   ingeniero: 'Ingeniero',
@@ -22,6 +24,7 @@ export function AdminCuentaDetallePage() {
   const qc = useQueryClient();
   const iniciarImpersonacion = useAuthStore((s) => s.iniciarImpersonacion);
   const [confirmandoMembresia, setConfirmandoMembresia] = useState<string | null>(null);
+  const [editandoCuenta, setEditandoCuenta] = useState(false);
 
   const q = useQuery({
     queryKey: ['admin', 'cuentas', id],
@@ -47,6 +50,17 @@ export function AdminCuentaDetallePage() {
       qc.clear();
       toast.success(`Modo cuenta: ${res.usuario.impersonatingCuentaNombre}`);
       navigate('/', { replace: true });
+    },
+    onError: (e) => toast.error(extraerMensajeError(e)),
+  });
+
+  const cambiarRolMut = useMutation({
+    mutationFn: ({ usuarioId, rol }: { usuarioId: string; rol: RolEnCuenta }) =>
+      adminService.actualizarMembresia(usuarioId, id, rol),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'cuentas', id] });
+      qc.invalidateQueries({ queryKey: ['admin', 'usuarios'] });
+      toast.success('Rol actualizado');
     },
     onError: (e) => toast.error(extraerMensajeError(e)),
   });
@@ -89,10 +103,16 @@ export function AdminCuentaDetallePage() {
             </p>
           </div>
         </div>
-        <Button onClick={() => impersonarMut.mutate()} disabled={impersonarMut.isPending || !c.activo} className="gap-2">
-          {impersonarMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
-          Ver como esta cuenta
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button variant="ghost" onClick={() => setEditandoCuenta(true)} className="gap-2">
+            <Pencil className="h-4 w-4" />
+            Editar
+          </Button>
+          <Button onClick={() => impersonarMut.mutate()} disabled={impersonarMut.isPending || !c.activo} className="gap-2">
+            {impersonarMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
+            Ver como esta cuenta
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -128,9 +148,16 @@ export function AdminCuentaDetallePage() {
                     <p className="text-xs text-muted-foreground">{m.usuario.email}</p>
                   </td>
                   <td className="px-4 py-3">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] bg-slate-100 text-slate-700">
-                      {rolLabel[m.rol]}
-                    </span>
+                    <select
+                      value={m.rol}
+                      disabled={cambiarRolMut.isPending}
+                      onChange={(e) => cambiarRolMut.mutate({ usuarioId: m.usuario.id, rol: e.target.value as RolEnCuenta })}
+                      className="text-xs px-2 py-1 rounded border border-border bg-surface"
+                    >
+                      <option value="ingeniero">{rolLabel.ingeniero}</option>
+                      <option value="propietario">{rolLabel.propietario}</option>
+                      <option value="operador">{rolLabel.operador}</option>
+                    </select>
                   </td>
                   <td className="px-4 py-3 text-xs text-muted-foreground hidden md:table-cell">
                     {m.usuario.ultimoLogin
@@ -185,6 +212,12 @@ export function AdminCuentaDetallePage() {
           </table>
         )}
       </section>
+
+      <EditarCuentaSheet
+        open={editandoCuenta}
+        cuenta={{ id: c.id, nombre: c.nombre, emailContacto: c.emailContacto, telefono: c.telefono }}
+        onClose={() => setEditandoCuenta(false)}
+      />
     </div>
   );
 }

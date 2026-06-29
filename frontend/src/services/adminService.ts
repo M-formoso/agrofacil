@@ -99,6 +99,10 @@ export const adminService = {
     const res = await apiClient.patch(`/admin/cuentas/${id}/desactivar`);
     return res.data;
   },
+  async actualizarCuenta(id: string, input: { nombre?: string; emailContacto?: string; telefono?: string }) {
+    const res = await apiClient.patch(`/admin/cuentas/${id}`, input);
+    return res.data;
+  },
 
   // Usuarios
   async listarUsuarios(): Promise<UsuarioAdmin[]> {
@@ -119,6 +123,16 @@ export const adminService = {
   },
   async desactivarUsuario(id: string) {
     const res = await apiClient.patch(`/admin/usuarios/${id}/desactivar`);
+    return res.data;
+  },
+
+  async actualizarUsuario(id: string, input: { nombre?: string; email?: string; rolGlobal?: 'superadmin' | 'ingeniero' | 'propietario' }) {
+    const res = await apiClient.patch(`/admin/usuarios/${id}`, input);
+    return res.data;
+  },
+
+  async actualizarMembresia(usuarioId: string, cuentaId: string, rol: RolEnCuenta) {
+    const res = await apiClient.patch(`/admin/usuarios/${usuarioId}/membresias/${cuentaId}`, { rol });
     return res.data;
   },
 

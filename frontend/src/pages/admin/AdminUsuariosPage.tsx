@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { UserPlus, Users, Loader2, Mail } from 'lucide-react';
+import { UserPlus, Users, Loader2, Mail, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
-import { adminService } from '@/services/adminService';
+import { adminService, type UsuarioAdmin } from '@/services/adminService';
 import { extraerMensajeError } from '@/lib/apiClient';
 import { InvitarUsuarioSheet } from '@/components/admin/InvitarUsuarioSheet';
+import { EditarUsuarioSheet } from '@/components/admin/EditarUsuarioSheet';
 import { cn } from '@/lib/utils';
 
 const rolLabel: Record<string, string> = {
@@ -18,6 +19,7 @@ const rolLabel: Record<string, string> = {
 
 export function AdminUsuariosPage() {
   const [open, setOpen] = useState(false);
+  const [editando, setEditando] = useState<UsuarioAdmin | null>(null);
   const qc = useQueryClient();
 
   const q = useQuery({
@@ -135,26 +137,36 @@ export function AdminUsuariosPage() {
                     )}
                   </td>
                   <td className="px-2 py-3 text-right">
-                    {u.pendienteActivacion ? (
+                    <div className="inline-flex items-center gap-1 justify-end">
                       <button
                         type="button"
-                        onClick={() => reenviarMut.mutate(u.id)}
-                        disabled={reenviarMut.isPending}
-                        className="text-xs text-primary hover:underline px-2 py-1 inline-flex items-center gap-1"
+                        onClick={() => setEditando(u)}
+                        title="Editar usuario"
+                        className="text-xs text-muted-foreground hover:text-foreground p-1.5 rounded hover:bg-muted inline-flex items-center"
                       >
-                        <Mail className="h-3 w-3" />
-                        Reenviar
+                        <Pencil className="h-3.5 w-3.5" />
                       </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => toggleMut.mutate({ id: u.id, activo: u.activo })}
-                        disabled={toggleMut.isPending}
-                        className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted"
-                      >
-                        {u.activo ? 'Desactivar' : 'Activar'}
-                      </button>
-                    )}
+                      {u.pendienteActivacion ? (
+                        <button
+                          type="button"
+                          onClick={() => reenviarMut.mutate(u.id)}
+                          disabled={reenviarMut.isPending}
+                          className="text-xs text-primary hover:underline px-2 py-1 inline-flex items-center gap-1"
+                        >
+                          <Mail className="h-3 w-3" />
+                          Reenviar
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => toggleMut.mutate({ id: u.id, activo: u.activo })}
+                          disabled={toggleMut.isPending}
+                          className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted"
+                        >
+                          {u.activo ? 'Desactivar' : 'Activar'}
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -164,6 +176,7 @@ export function AdminUsuariosPage() {
       )}
 
       <InvitarUsuarioSheet open={open} onClose={() => setOpen(false)} />
+      <EditarUsuarioSheet open={!!editando} usuario={editando} onClose={() => setEditando(null)} />
     </div>
   );
 }

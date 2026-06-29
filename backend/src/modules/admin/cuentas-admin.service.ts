@@ -115,6 +115,17 @@ export class CuentasAdminService {
     };
   }
 
+  async actualizar(id: string, dto: { nombre?: string; emailContacto?: string; telefono?: string }) {
+    const data: { nombre?: string; emailContacto?: string | null; telefono?: string | null } = {};
+    if (dto.nombre !== undefined) data.nombre = dto.nombre;
+    if (dto.emailContacto !== undefined) data.emailContacto = dto.emailContacto || null;
+    if (dto.telefono !== undefined) data.telefono = dto.telefono || null;
+
+    const cuenta = await this.prisma.cuenta.update({ where: { id }, data }).catch(() => null);
+    if (!cuenta) throw new NotFoundException('Cuenta no encontrada');
+    return cuenta;
+  }
+
   async activar(id: string) {
     const cuenta = await this.prisma.cuenta.update({
       where: { id },

@@ -7,7 +7,13 @@ import { SuperAdmin } from '../../common/decorators/super-admin.decorator';
 import { SuperAdminGuard } from '../../common/guards/super-admin.guard';
 import { Usuario } from '../../common/decorators/usuario.decorator';
 import type { UsuarioActual } from '../../common/types/usuario-actual';
-import { CrearCuentaDto, InvitarUsuarioDto } from './dto/admin.dto';
+import {
+  ActualizarCuentaDto,
+  ActualizarMembresiaDto,
+  ActualizarUsuarioDto,
+  CrearCuentaDto,
+  InvitarUsuarioDto,
+} from './dto/admin.dto';
 
 /// Panel del dueño de la plataforma. TODOS los endpoints requieren rolGlobal=superadmin.
 @SuperAdmin()
@@ -37,6 +43,12 @@ export class AdminController {
   @Get('cuentas/:id')
   detalleCuenta(@Param('id', ParseUUIDPipe) id: string) {
     return this.cuentas.detalle(id);
+  }
+
+  @Patch('cuentas/:id')
+  @HttpCode(HttpStatus.OK)
+  actualizarCuenta(@Param('id', ParseUUIDPipe) id: string, @Body() dto: ActualizarCuentaDto) {
+    return this.cuentas.actualizar(id, dto);
   }
 
   @Patch('cuentas/:id/activar')
@@ -77,6 +89,12 @@ export class AdminController {
     return this.usuarios.invitar(dto);
   }
 
+  @Patch('usuarios/:id')
+  @HttpCode(HttpStatus.OK)
+  actualizarUsuario(@Param('id', ParseUUIDPipe) id: string, @Body() dto: ActualizarUsuarioDto) {
+    return this.usuarios.actualizar(id, dto);
+  }
+
   @Post('usuarios/:id/reenviar-invitacion')
   @HttpCode(HttpStatus.OK)
   reenviarInvitacion(@Param('id', ParseUUIDPipe) id: string) {
@@ -93,6 +111,16 @@ export class AdminController {
   @HttpCode(HttpStatus.OK)
   desactivarUsuario(@Param('id', ParseUUIDPipe) id: string) {
     return this.usuarios.desactivar(id);
+  }
+
+  @Patch('usuarios/:usuarioId/membresias/:cuentaId')
+  @HttpCode(HttpStatus.OK)
+  actualizarMembresia(
+    @Param('usuarioId', ParseUUIDPipe) usuarioId: string,
+    @Param('cuentaId', ParseUUIDPipe) cuentaId: string,
+    @Body() dto: ActualizarMembresiaDto,
+  ) {
+    return this.usuarios.actualizarMembresia(usuarioId, cuentaId, dto.rol);
   }
 
   @Delete('usuarios/:usuarioId/membresias/:cuentaId')
