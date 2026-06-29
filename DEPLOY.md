@@ -61,6 +61,9 @@ En `Variables` del servicio `backend`, agregá (los `${{ ... }}` son **referenci
 | `SUPERADMIN_PASSWORD` | contraseña fuerte (guardala en un gestor) |
 | `SUPERADMIN_NOMBRE` | tu nombre para mostrar (ej: `Mateo Formoso`) |
 | `APP_PUBLIC_URL` | `https://${{ frontend.RAILWAY_PUBLIC_DOMAIN }}` — base para armar links de activación en emails |
+| `RESEND_API_KEY` | API key generada en resend.com (`re_xxxxx`). Si está vacía los emails se loguean en vez de enviarse |
+| `EMAIL_FROM` | Remitente. Ej: `AgroFácil <soporte@agrofacilar.com>`. Usar dominio verificado |
+| `EMAIL_REPLY_TO` | A dónde llegan los "Responder". Ej: `soporte@agrofacilar.com` |
 
 ### 3.3 Generar dominio público
 
@@ -129,7 +132,52 @@ El seed es **idempotente** (todo con `upsert`):
 
 ---
 
-## 7. Verificar
+## 7. Configurar Resend (envío de emails de invitación)
+
+Las invitaciones que el superadmin manda desde el panel salen vía Resend. Hay que verificar el dominio `agrofacilar.com` una sola vez. Mientras tanto el código funciona en modo sandbox (`onboarding@resend.dev`), que solo deja mandar al email con el que te registraste en Resend.
+
+### 7.1 Crear cuenta y obtener API key
+1. Entrá a [resend.com](https://resend.com) → Sign up con `agrofacioficial@gmail.com`.
+2. Una vez adentro: **API Keys** → **Create API Key** → name `agrofacil-prod`, permisos `Sending access` → copiar la key (empieza con `re_`).
+3. Pegarla en Railway → servicio backend → Variables → `RESEND_API_KEY`.
+
+### 7.2 Verificar el dominio `agrofacilar.com`
+1. En Resend → **Domains** → **Add Domain** → `agrofacilar.com`.
+2. Resend te muestra una lista de registros DNS que tenés que cargar donde compraste el dominio (NIC.ar, Namecheap, Cloudflare, etc.). Típicamente son:
+
+| Tipo | Host / Name | Valor (te lo da Resend) |
+|---|---|---|
+| `MX` (prio 10) | `send.agrofacilar.com` | `feedback-smtp.<region>.amazonses.com` |
+| `TXT` (SPF) | `send.agrofacilar.com` | `v=spf1 include:amazonses.com ~all` |
+| `CNAME` (DKIM #1) | `resend._domainkey.agrofacilar.com` | `resend.<hash>.dkim.amazonses.com` |
+| `CNAME` (DKIM #2) | `resend2._domainkey.agrofacilar.com` | `resend2.<hash>.dkim.amazonses.com` |
+| `CNAME` (DKIM #3) | `resend3._domainkey.agrofacilar.com` | `resend3.<hash>.dkim.amazonses.com` |
+
+> ⚠️ Los `<hash>` son específicos de tu cuenta — los copiás del dashboard de Resend, no los inventes.
+
+3. Los registros se cargan en el **subdominio `send.agrofacilar.com`** (excepto los DKIM que van en `resend._domainkey.`), así que **tu MX principal para recibir emails en `soporte@agrofacilar.com` queda intacto**.
+4. Una vez cargados, en Resend → **Verify DNS Records**. Tarda entre 5 minutos y unas horas.
+5. Cuando aparezca el ✅ verde, en Railway cambiar `EMAIL_FROM` a `AgroFácil <soporte@agrofacilar.com>` (si no estaba ya) y redeployar.
+
+### 7.3 (Opcional pero recomendado) Agregar DMARC
+
+Cuando los DKIM estén verdes, agregá un registro más en tu DNS:
+
+| Tipo | Host | Valor |
+|---|---|---|
+| `TXT` | `_dmarc.agrofacilar.com` | `v=DMARC1; p=none; rua=mailto:soporte@agrofacilar.com` |
+
+Mejora la entregabilidad y te llegan reportes de quién intenta enviar emails diciendo ser de tu dominio.
+
+### 7.4 Test rápido
+Desde el panel admin: invitar a un usuario nuevo con un email cualquiera (gmail, hotmail). Debería llegarle el correo en ~1 minuto. Si no llega:
+- Revisar **spam** primero.
+- En Resend → **Emails** vas a ver el log de todos los envíos con su status (`delivered`, `bounced`, `complained`).
+- En Railway logs del backend buscar `[EMAIL` para ver si lo está intentando enviar.
+
+---
+
+## 8. Verificar
 
 1. Abrí `https://<frontend-domain>/` → deberías ver el login.
 2. Loggeate con `demo@agrofacil.dev` / `agrofacil123`.
