@@ -17,4 +17,8 @@ export interface UsuarioActual {
   rolEnCuentaActiva: RolEnCuenta;
   /** Todas las cuentas a las que el usuario tiene acceso. */
   membresias: MembresiaResumen[];
+  /** Si es true, el superadmin está viendo el sistema como otra cuenta. */
+  impersonating?: boolean;
+  /** Nombre de la cuenta que se está impersonando (para mostrar en UI). */
+  impersonatingCuentaNombre?: string;
 }

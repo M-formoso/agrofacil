@@ -1,5 +1,5 @@
 import { apiClient } from '@/lib/apiClient';
-import type { RolEnCuenta } from '@/stores/authStore';
+import type { RolEnCuenta, UsuarioActual } from '@/stores/authStore';
 
 export interface CuentaAdmin {
   id: string;
@@ -39,14 +39,52 @@ export interface InvitarUsuarioInput {
   rol: RolEnCuenta;
 }
 
+export interface CuentaDetalle {
+  id: string;
+  nombre: string;
+  emailContacto: string | null;
+  telefono: string | null;
+  activo: boolean;
+  createdAt: string;
+  membresias: {
+    id: string;
+    rol: RolEnCuenta;
+    usuario: {
+      id: string;
+      nombre: string;
+      email: string;
+      activo: boolean;
+      ultimoLogin: string | null;
+    };
+  }[];
+  _count: { establecimientos: number; campanias: number };
+}
+
+export interface InvitacionAdmin {
+  id: string;
+  token: string;
+  createdAt: string;
+  expiraEn: string;
+  usadoEn: string | null;
+  estado: 'pendiente' | 'usada' | 'expirada';
+  usuario: { id: string; email: string; nombre: string };
+  cuenta: { id: string; nombre: string } | null;
+}
+
+export interface ImpersonarResponse {
+  accessToken: string;
+  refreshToken: string;
+  usuario: UsuarioActual;
+}
+
 export const adminService = {
   // Cuentas
   async listarCuentas(): Promise<CuentaAdmin[]> {
     const res = await apiClient.get<CuentaAdmin[]>('/admin/cuentas');
     return res.data;
   },
-  async detalleCuenta(id: string) {
-    const res = await apiClient.get(`/admin/cuentas/${id}`);
+  async detalleCuenta(id: string): Promise<CuentaDetalle> {
+    const res = await apiClient.get<CuentaDetalle>(`/admin/cuentas/${id}`);
     return res.data;
   },
   async crearCuenta(input: CrearCuentaInput) {
@@ -81,6 +119,28 @@ export const adminService = {
   },
   async desactivarUsuario(id: string) {
     const res = await apiClient.patch(`/admin/usuarios/${id}/desactivar`);
+    return res.data;
+  },
+
+  async quitarMembresia(usuarioId: string, cuentaId: string) {
+    const res = await apiClient.delete(`/admin/usuarios/${usuarioId}/membresias/${cuentaId}`);
+    return res.data;
+  },
+
+  // Invitaciones
+  async listarInvitaciones(): Promise<InvitacionAdmin[]> {
+    const res = await apiClient.get<InvitacionAdmin[]>('/admin/invitaciones');
+    return res.data;
+  },
+
+  async cancelarInvitacion(id: string) {
+    const res = await apiClient.delete(`/admin/invitaciones/${id}`);
+    return res.data;
+  },
+
+  // Impersonación
+  async impersonar(cuentaId: string): Promise<ImpersonarResponse> {
+    const res = await apiClient.post<ImpersonarResponse>(`/admin/impersonar/${cuentaId}`);
     return res.data;
   },
 };

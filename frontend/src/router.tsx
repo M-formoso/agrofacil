@@ -24,7 +24,9 @@ import { AlertasPage } from '@/pages/AlertasPage';
 import { RankingPage } from '@/pages/RankingPage';
 import { AdminDashboardPage } from '@/pages/admin/AdminDashboardPage';
 import { AdminCuentasPage } from '@/pages/admin/AdminCuentasPage';
+import { AdminCuentaDetallePage } from '@/pages/admin/AdminCuentaDetallePage';
 import { AdminUsuariosPage } from '@/pages/admin/AdminUsuariosPage';
+import { AdminInvitacionesPage } from '@/pages/admin/AdminInvitacionesPage';
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -36,7 +38,9 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <AdminDashboardPage /> },
       { path: 'cuentas', element: <AdminCuentasPage /> },
+      { path: 'cuentas/:id', element: <AdminCuentaDetallePage /> },
       { path: 'usuarios', element: <AdminUsuariosPage /> },
+      { path: 'invitaciones', element: <AdminInvitacionesPage /> },
     ],
   },
   {

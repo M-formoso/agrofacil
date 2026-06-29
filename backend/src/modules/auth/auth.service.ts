@@ -17,6 +17,7 @@ interface JwtPayload {
   sub: string;
   email: string;
   cuentaActivaId: string;
+  impersonating?: boolean;
 }
 
 type UsuarioConMembresias = Usuario & {
@@ -73,6 +74,46 @@ export class AuthService {
     if (!membresia) throw new UnauthorizedException('Sin acceso a esa cuenta');
 
     return this.generarTokens(this.armarUsuarioActual(usuario, membresia.cuentaId));
+  }
+
+  /// Genera un par de tokens "modo impersonación" para un superadmin sobre una cuenta target.
+  /// Sólo se invoca desde el AdminController con SuperAdminGuard, así que confiamos en que
+  /// el usuario es superadmin — igual chequeamos por defensa.
+  async impersonar(superadminId: string, cuentaTargetId: string): Promise<TokensResponse> {
+    const superadmin = await this.prisma.usuario.findFirst({
+      where: { id: superadminId, activo: true, rolGlobal: 'superadmin' },
+    });
+    if (!superadmin) throw new ForbiddenException('Solo el superadmin puede impersonar');
+
+    const cuenta = await this.prisma.cuenta.findFirst({
+      where: { id: cuentaTargetId, activo: true },
+      select: { id: true, nombre: true },
+    });
+    if (!cuenta) throw new UnauthorizedException('Cuenta no encontrada o inactiva');
+
+    const accessExpiresIn = (this.config.get<string>('jwt.accessExpiresIn') ?? '30m') as `${number}${'s' | 'm' | 'h' | 'd'}`;
+    const refreshExpiresIn = (this.config.get<string>('jwt.refreshExpiresIn') ?? '7d') as `${number}${'s' | 'm' | 'h' | 'd'}`;
+    const payload: JwtPayload = {
+      sub: superadmin.id,
+      email: superadmin.email,
+      cuentaActivaId: cuenta.id,
+      impersonating: true,
+    };
+    const accessToken = await this.jwt.signAsync(payload, { expiresIn: accessExpiresIn });
+    const refreshToken = await this.jwt.signAsync(payload, { expiresIn: refreshExpiresIn });
+
+    const usuarioActual: UsuarioActual = {
+      id: superadmin.id,
+      email: superadmin.email,
+      nombre: superadmin.nombre,
+      rolGlobal: superadmin.rolGlobal,
+      cuentaId: cuenta.id,
+      rolEnCuentaActiva: 'ingeniero',
+      membresias: [],
+      impersonating: true,
+      impersonatingCuentaNombre: cuenta.nombre,
+    };
+    return { accessToken, refreshToken, usuario: usuarioActual };
   }
 
   async switchCuenta(usuarioId: string, nuevaCuentaId: string): Promise<TokensResponse> {

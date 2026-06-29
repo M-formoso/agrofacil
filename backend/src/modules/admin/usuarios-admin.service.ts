@@ -164,6 +164,20 @@ export class UsuariosAdminService {
     if (!u) throw new NotFoundException('Usuario no encontrado');
     return { id: u.id, activo: u.activo };
   }
+
+  /// Quita la membresía de un usuario en una cuenta (soft-delete activo=false).
+  /// No borra al usuario — sólo le saca el acceso a esa cuenta.
+  async quitarMembresia(usuarioId: string, cuentaId: string) {
+    const membresia = await this.prisma.usuarioCuenta.findUnique({
+      where: { usuarioId_cuentaId: { usuarioId, cuentaId } },
+    });
+    if (!membresia) throw new NotFoundException('Membresía no encontrada');
+    await this.prisma.usuarioCuenta.update({
+      where: { id: membresia.id },
+      data: { activo: false },
+    });
+    return { ok: true };
+  }
 }
 
 async function generarHashSentinela(): Promise<string> {

@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Building2, Users, LogOut, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, Building2, Users, LogOut, ShieldCheck, Mail } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAuthStore } from '@/stores/authStore';
 import { cn } from '@/lib/utils';
@@ -14,6 +14,7 @@ const items: AdminNavItem[] = [
   { to: '/admin', label: 'Panel', icon: LayoutDashboard },
   { to: '/admin/cuentas', label: 'Cuentas', icon: Building2 },
   { to: '/admin/usuarios', label: 'Usuarios', icon: Users },
+  { to: '/admin/invitaciones', label: 'Invitaciones', icon: Mail },
 ];
 
 /// Sidebar del panel superadmin. Tema oscuro intencional para que visualmente

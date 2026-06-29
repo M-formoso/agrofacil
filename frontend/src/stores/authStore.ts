@@ -18,6 +18,16 @@ export interface UsuarioActual {
   cuentaId: string;
   rolEnCuentaActiva: RolEnCuenta;
   membresias: MembresiaResumen[];
+  impersonating?: boolean;
+  impersonatingCuentaNombre?: string;
+}
+
+/// Tokens del superadmin previos a impersonar. Sirven para volver a su sesión real
+/// con un solo click ("Salir del modo cuenta") sin pedirle la password.
+export interface SesionPrevia {
+  accessToken: string;
+  refreshToken: string;
+  usuario: UsuarioActual;
 }
 
 interface AuthState {
@@ -25,17 +35,22 @@ interface AuthState {
   refreshToken: string | null;
   usuario: UsuarioActual | null;
   isAuthenticated: boolean;
+  /** Sesión original del superadmin antes de impersonar. Si no es null, está en modo impersonación. */
+  sesionPrevia: SesionPrevia | null;
   setTokens: (access: string, refresh: string, usuario: UsuarioActual) => void;
+  iniciarImpersonacion: (access: string, refresh: string, usuario: UsuarioActual) => void;
+  finalizarImpersonacion: () => void;
   logout: () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       accessToken: null,
       refreshToken: null,
       usuario: null,
       isAuthenticated: false,
+      sesionPrevia: null,
       setTokens: (access, refresh, usuario) =>
         set({
           accessToken: access,
@@ -43,12 +58,40 @@ export const useAuthStore = create<AuthState>()(
           usuario,
           isAuthenticated: true,
         }),
+      iniciarImpersonacion: (access, refresh, usuario) => {
+        const { accessToken, refreshToken, usuario: actual, sesionPrevia } = get();
+        // Si ya estábamos impersonando, no machaquemos la sesión original.
+        const previa: SesionPrevia | null = sesionPrevia
+          ? sesionPrevia
+          : accessToken && refreshToken && actual
+          ? { accessToken, refreshToken, usuario: actual }
+          : null;
+        set({
+          accessToken: access,
+          refreshToken: refresh,
+          usuario,
+          isAuthenticated: true,
+          sesionPrevia: previa,
+        });
+      },
+      finalizarImpersonacion: () => {
+        const previa = get().sesionPrevia;
+        if (!previa) return;
+        set({
+          accessToken: previa.accessToken,
+          refreshToken: previa.refreshToken,
+          usuario: previa.usuario,
+          isAuthenticated: true,
+          sesionPrevia: null,
+        });
+      },
       logout: () =>
         set({
           accessToken: null,
           refreshToken: null,
           usuario: null,
           isAuthenticated: false,
+          sesionPrevia: null,
         }),
     }),
     {
@@ -58,6 +101,7 @@ export const useAuthStore = create<AuthState>()(
         refreshToken: state.refreshToken,
         usuario: state.usuario,
         isAuthenticated: state.isAuthenticated,
+        sesionPrevia: state.sesionPrevia,
       }),
     },
   ),

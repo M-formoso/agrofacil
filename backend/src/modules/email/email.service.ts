@@ -9,10 +9,12 @@ export class EmailService {
   private readonly logger = new Logger(EmailService.name);
   private readonly resend: Resend | null;
   private readonly fromAddress: string;
+  private readonly replyTo: string | undefined;
 
   constructor(private readonly config: ConfigService) {
     const apiKey = this.config.get<string>('email.resendApiKey');
     this.fromAddress = this.config.get<string>('email.from') ?? 'AgroFácil <onboarding@resend.dev>';
+    this.replyTo = this.config.get<string>('email.replyTo') || undefined;
     this.resend = apiKey ? new Resend(apiKey) : null;
     if (!this.resend) {
       this.logger.warn('RESEND_API_KEY no seteada — los mails se loguean en lugar de enviarse.');
@@ -59,6 +61,7 @@ export class EmailService {
       subject: params.subject,
       html: params.html,
       text: params.text,
+      ...(this.replyTo ? { replyTo: this.replyTo } : {}),
     });
     if (error) {
       this.logger.error({ err: error, to: params.to }, 'Falló el envío con Resend');

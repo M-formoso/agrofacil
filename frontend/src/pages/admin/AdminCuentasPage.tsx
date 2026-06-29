@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Building2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -73,10 +74,12 @@ export function AdminCuentasPage() {
               {q.data?.map((c) => (
                 <tr key={c.id} className="border-t border-border hover:bg-slate-50/60">
                   <td className="px-4 py-3">
-                    <p className="font-medium text-foreground">{c.nombre}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Creada {new Date(c.createdAt).toLocaleDateString('es-AR')}
-                    </p>
+                    <Link to={`/admin/cuentas/${c.id}`} className="block">
+                      <p className="font-medium text-foreground hover:text-primary">{c.nombre}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Creada {new Date(c.createdAt).toLocaleDateString('es-AR')}
+                      </p>
+                    </Link>
                   </td>
                   <td className="px-4 py-3 hidden md:table-cell">
                     <p className="text-foreground">{c.emailContacto ?? '—'}</p>

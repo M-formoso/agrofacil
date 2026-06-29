@@ -1,12 +1,15 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Patch, Post, UseGuards } from '@nestjs/common';
 import { CuentasAdminService } from './cuentas-admin.service';
 import { UsuariosAdminService } from './usuarios-admin.service';
+import { InvitacionesAdminService } from './invitaciones-admin.service';
+import { AuthService } from '../auth/auth.service';
 import { SuperAdmin } from '../../common/decorators/super-admin.decorator';
 import { SuperAdminGuard } from '../../common/guards/super-admin.guard';
+import { Usuario } from '../../common/decorators/usuario.decorator';
+import type { UsuarioActual } from '../../common/types/usuario-actual';
 import { CrearCuentaDto, InvitarUsuarioDto } from './dto/admin.dto';
 
 /// Panel del dueño de la plataforma. TODOS los endpoints requieren rolGlobal=superadmin.
-/// Por ahora son stubs — la lógica real se completa en la próxima iteración.
 @SuperAdmin()
 @UseGuards(SuperAdminGuard)
 @Controller('admin')
@@ -14,6 +17,8 @@ export class AdminController {
   constructor(
     private readonly cuentas: CuentasAdminService,
     private readonly usuarios: UsuariosAdminService,
+    private readonly invitaciones: InvitacionesAdminService,
+    private readonly auth: AuthService,
   ) {}
 
   // ===== Cuentas (organizaciones) =====
@@ -46,6 +51,19 @@ export class AdminController {
     return this.cuentas.desactivar(id);
   }
 
+  // ===== Impersonación =====
+
+  /// Devuelve un par de tokens con `impersonating=true` para que el superadmin
+  /// vea el sistema como si fuera la cuenta target.
+  @Post('impersonar/:cuentaId')
+  @HttpCode(HttpStatus.OK)
+  impersonar(
+    @Usuario() user: UsuarioActual,
+    @Param('cuentaId', ParseUUIDPipe) cuentaId: string,
+  ) {
+    return this.auth.impersonar(user.id, cuentaId);
+  }
+
   // ===== Usuarios e invitaciones =====
 
   @Get('usuarios')
@@ -75,5 +93,27 @@ export class AdminController {
   @HttpCode(HttpStatus.OK)
   desactivarUsuario(@Param('id', ParseUUIDPipe) id: string) {
     return this.usuarios.desactivar(id);
+  }
+
+  @Delete('usuarios/:usuarioId/membresias/:cuentaId')
+  @HttpCode(HttpStatus.OK)
+  quitarMembresia(
+    @Param('usuarioId', ParseUUIDPipe) usuarioId: string,
+    @Param('cuentaId', ParseUUIDPipe) cuentaId: string,
+  ) {
+    return this.usuarios.quitarMembresia(usuarioId, cuentaId);
+  }
+
+  // ===== Invitaciones (tokens) =====
+
+  @Get('invitaciones')
+  listarInvitaciones() {
+    return this.invitaciones.listar();
+  }
+
+  @Delete('invitaciones/:id')
+  @HttpCode(HttpStatus.OK)
+  cancelarInvitacion(@Param('id', ParseUUIDPipe) id: string) {
+    return this.invitaciones.cancelar(id);
   }
 }

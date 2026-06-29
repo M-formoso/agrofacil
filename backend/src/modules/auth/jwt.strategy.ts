@@ -9,6 +9,8 @@ interface JwtPayload {
   sub: string;             // user id
   email: string;
   cuentaActivaId: string;  // cuenta seleccionada en este token
+  /** Si está presente, el superadmin está impersonando esta cuenta. */
+  impersonating?: boolean;
 }
 
 @Injectable()
@@ -38,11 +40,38 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
     if (!usuario) throw new UnauthorizedException('Usuario no encontrado o inactivo');
 
+    // --- Modo impersonación: solo válido para superadmins.
+    if (payload.impersonating) {
+      if (usuario.rolGlobal !== 'superadmin') {
+        throw new UnauthorizedException('Impersonación no permitida');
+      }
+      const cuentaTarget = await this.prisma.cuenta.findFirst({
+        where: { id: payload.cuentaActivaId, activo: true },
+        select: { id: true, nombre: true },
+      });
+      if (!cuentaTarget) throw new UnauthorizedException('Cuenta a impersonar no encontrada');
+
+      return {
+        id: usuario.id,
+        email: usuario.email,
+        nombre: usuario.nombre,
+        rolGlobal: usuario.rolGlobal,
+        cuentaId: cuentaTarget.id,
+        rolEnCuentaActiva: 'ingeniero',
+        membresias: usuario.membresias.map((m) => ({
+          cuentaId: m.cuentaId,
+          cuentaNombre: m.cuenta.nombre,
+          rol: m.rol,
+        })),
+        impersonating: true,
+        impersonatingCuentaNombre: cuentaTarget.nombre,
+      };
+    }
+
     if (usuario.membresias.length === 0) {
       throw new UnauthorizedException('Usuario sin membresías activas');
     }
 
-    // Validar que la cuenta del token sigue siendo accesible
     const membresiaActiva = usuario.membresias.find((m) => m.cuentaId === payload.cuentaActivaId);
     if (!membresiaActiva) {
       throw new UnauthorizedException('Sin acceso a esa cuenta');

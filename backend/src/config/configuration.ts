@@ -17,6 +17,7 @@ export interface AppConfig {
   email: {
     resendApiKey: string;
     from: string;
+    replyTo: string;
   };
   uploads: {
     /** Carpeta absoluta donde caen los archivos subidos. En dev: ./uploads. En Railway: /data/uploads (volume montado). */
@@ -41,6 +42,7 @@ export default (): AppConfig => ({
   email: {
     resendApiKey: process.env.RESEND_API_KEY ?? '',
     from: process.env.EMAIL_FROM ?? 'AgroFácil <onboarding@resend.dev>',
+    replyTo: process.env.EMAIL_REPLY_TO ?? '',
   },
   uploads: {
     dir: resolve(process.env.UPLOADS_DIR ?? './uploads'),

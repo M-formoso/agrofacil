@@ -5,6 +5,7 @@ import { Topbar } from './Topbar';
 import { CommandPalette } from './CommandPalette';
 import { OfflineIndicator } from './OfflineIndicator';
 import { Fab } from './Fab';
+import { ImpersonacionBanner } from './ImpersonacionBanner';
 
 export function AppLayout() {
   const location = useLocation();
@@ -13,6 +14,7 @@ export function AppLayout() {
     <div className="min-h-screen flex bg-background text-foreground">
       <Sidebar />
       <div className="flex-1 min-w-0 min-h-screen flex flex-col">
+        <ImpersonacionBanner />
         <Topbar />
         <main className="flex-1 flex flex-col p-3 sm:p-4 lg:p-8 pb-safe">
           <AnimatePresence mode="wait">
