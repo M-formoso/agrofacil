@@ -71,6 +71,16 @@ export class EmailService {
   }
 }
 
+/// SVG inline del logo AgroFácil (versión blanca para el header verde).
+/// Mismo dibujo que el componente Logo del frontend: 3 barras + brote.
+const LOGO_SVG = `
+<svg width="36" height="36" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;">
+  <rect x="4"  y="20" width="3.6" height="9"  rx="1.5" ry="1.5" fill="#FFFFFF"/>
+  <rect x="11" y="14" width="3.6" height="15" rx="1.5" ry="1.5" fill="#FFFFFF"/>
+  <rect x="18" y="7"  width="3.6" height="22" rx="1.5" ry="1.5" fill="#FFFFFF"/>
+  <path d="M21 7 C 24.2 3.5, 27.6 3, 29 4.2 C 27.6 6.5, 24.8 8, 21.5 7.5 Z" fill="#FFFFFF"/>
+</svg>`;
+
 function plantillaInvitacion(params: {
   nombre: string;
   cuentaNombre: string;
@@ -86,9 +96,18 @@ function plantillaInvitacion(params: {
         <td align="center">
           <table role="presentation" width="100%" style="max-width:560px; background:#FFFFFF; border-radius:16px; overflow:hidden; box-shadow:0 1px 2px rgba(0,0,0,0.05);" cellspacing="0" cellpadding="0">
             <tr>
-              <td style="background:#047C00; padding:24px; text-align:center; color:#FFFFFF;">
-                <h1 style="margin:0; font-size:22px;">🚜 AgroFácil</h1>
-                <p style="margin:4px 0 0 0; font-size:13px; opacity:.85;">Gestión agropecuaria</p>
+              <td style="background:#047C00; padding:28px 24px; text-align:center; color:#FFFFFF;">
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
+                  <tr>
+                    <td style="padding-right:10px; vertical-align:middle;">${LOGO_SVG}</td>
+                    <td style="vertical-align:middle;">
+                      <div style="font-size:22px; font-weight:800; letter-spacing:-0.5px; line-height:1;">
+                        <span style="color:#E8F5E8;">Agro</span><span style="color:#FFFFFF;">Facil</span>
+                      </div>
+                    </td>
+                  </tr>
+                </table>
+                <p style="margin:8px 0 0 0; font-size:12px; opacity:.85; letter-spacing:0.5px; text-transform:uppercase;">Gestión agropecuaria</p>
               </td>
             </tr>
             <tr>
