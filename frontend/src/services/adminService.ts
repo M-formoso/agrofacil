@@ -131,6 +131,11 @@ export const adminService = {
     return res.data;
   },
 
+  async eliminarUsuario(id: string) {
+    const res = await apiClient.delete(`/admin/usuarios/${id}`);
+    return res.data;
+  },
+
   async actualizarMembresia(usuarioId: string, cuentaId: string, rol: RolEnCuenta) {
     const res = await apiClient.patch(`/admin/usuarios/${usuarioId}/membresias/${cuentaId}`, { rol });
     return res.data;

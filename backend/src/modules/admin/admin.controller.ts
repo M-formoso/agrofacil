@@ -113,6 +113,12 @@ export class AdminController {
     return this.usuarios.desactivar(id);
   }
 
+  @Delete('usuarios/:id')
+  @HttpCode(HttpStatus.OK)
+  eliminarUsuario(@Usuario() solicitante: UsuarioActual, @Param('id', ParseUUIDPipe) id: string) {
+    return this.usuarios.eliminar(id, solicitante.id);
+  }
+
   @Patch('usuarios/:usuarioId/membresias/:cuentaId')
   @HttpCode(HttpStatus.OK)
   actualizarMembresia(

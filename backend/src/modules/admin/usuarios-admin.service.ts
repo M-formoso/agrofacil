@@ -205,6 +205,33 @@ export class UsuariosAdminService {
     return { id: actualizado.id, rol: actualizado.rol };
   }
 
+  /// Hard-delete del usuario. Borra todos los registros que tenía cargados
+  /// (conversaciones, monitoreos, reportes, comentarios, alertas) y al final
+  /// el usuario. Operación irreversible. No se puede borrar a uno mismo.
+  async eliminar(usuarioId: string, solicitanteId: string) {
+    if (usuarioId === solicitanteId) {
+      throw new ConflictException('No podés eliminar tu propio usuario');
+    }
+    const usuario = await this.prisma.usuario.findUnique({ where: { id: usuarioId } });
+    if (!usuario) throw new NotFoundException('Usuario no encontrado');
+
+    await this.prisma.$transaction(async (tx) => {
+      // Comentarios del usuario sobre reportes ajenos (cascade no aplica acá).
+      await tx.comentarioReporte.deleteMany({ where: { autorId: usuarioId } });
+      // Reportes del usuario → cascadea sus propios comentarios.
+      await tx.reporte.deleteMany({ where: { autorId: usuarioId } });
+      // Monitoreos del usuario → cascadea sus fotos.
+      await tx.monitoreo.deleteMany({ where: { autorId: usuarioId } });
+      // Conversaciones del usuario → cascadea mensajes.
+      await tx.conversacion.deleteMany({ where: { usuarioId } });
+      // Alertas: la FK es opcional → nullify para no perder el historial.
+      await tx.alerta.updateMany({ where: { usuarioId }, data: { usuarioId: null } });
+      // Por último el usuario — cascadea UsuarioCuenta y TokenInvitacion.
+      await tx.usuario.delete({ where: { id: usuarioId } });
+    });
+    return { ok: true };
+  }
+
   /// Quita la membresía de un usuario en una cuenta (soft-delete activo=false).
   /// No borra al usuario — sólo le saca el acceso a esa cuenta.
   async quitarMembresia(usuarioId: string, cuentaId: string) {

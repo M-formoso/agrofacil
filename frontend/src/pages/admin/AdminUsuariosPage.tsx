@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { UserPlus, Users, Loader2, Mail, Pencil } from 'lucide-react';
+import { UserPlus, Users, Loader2, Mail, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { adminService, type UsuarioAdmin } from '@/services/adminService';
 import { extraerMensajeError } from '@/lib/apiClient';
 import { InvitarUsuarioSheet } from '@/components/admin/InvitarUsuarioSheet';
 import { EditarUsuarioSheet } from '@/components/admin/EditarUsuarioSheet';
+import { useAuthStore } from '@/stores/authStore';
 import { cn } from '@/lib/utils';
 
 const rolLabel: Record<string, string> = {
@@ -20,6 +21,8 @@ const rolLabel: Record<string, string> = {
 export function AdminUsuariosPage() {
   const [open, setOpen] = useState(false);
   const [editando, setEditando] = useState<UsuarioAdmin | null>(null);
+  const [confirmandoEliminar, setConfirmandoEliminar] = useState<string | null>(null);
+  const miUsuarioId = useAuthStore((s) => s.usuario?.id);
   const qc = useQueryClient();
 
   const q = useQuery({
@@ -42,6 +45,18 @@ export function AdminUsuariosPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin', 'usuarios'] });
       toast.success('Usuario actualizado');
+    },
+    onError: (e) => toast.error(extraerMensajeError(e)),
+  });
+
+  const eliminarMut = useMutation({
+    mutationFn: (id: string) => adminService.eliminarUsuario(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['admin', 'usuarios'] });
+      qc.invalidateQueries({ queryKey: ['admin', 'cuentas'] });
+      qc.invalidateQueries({ queryKey: ['admin', 'invitaciones'] });
+      toast.success('Usuario eliminado definitivamente');
+      setConfirmandoEliminar(null);
     },
     onError: (e) => toast.error(extraerMensajeError(e)),
   });
@@ -137,36 +152,66 @@ export function AdminUsuariosPage() {
                     )}
                   </td>
                   <td className="px-2 py-3 text-right">
-                    <div className="inline-flex items-center gap-1 justify-end">
-                      <button
-                        type="button"
-                        onClick={() => setEditando(u)}
-                        title="Editar usuario"
-                        className="text-xs text-muted-foreground hover:text-foreground p-1.5 rounded hover:bg-muted inline-flex items-center"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </button>
-                      {u.pendienteActivacion ? (
+                    {confirmandoEliminar === u.id ? (
+                      <div className="inline-flex items-center gap-1 justify-end">
                         <button
                           type="button"
-                          onClick={() => reenviarMut.mutate(u.id)}
-                          disabled={reenviarMut.isPending}
-                          className="text-xs text-primary hover:underline px-2 py-1 inline-flex items-center gap-1"
+                          onClick={() => eliminarMut.mutate(u.id)}
+                          disabled={eliminarMut.isPending}
+                          className="text-xs text-destructive font-medium px-2 py-1 rounded hover:bg-destructive/10"
                         >
-                          <Mail className="h-3 w-3" />
-                          Reenviar
+                          {eliminarMut.isPending ? 'Eliminando…' : 'Confirmar borrado'}
                         </button>
-                      ) : (
                         <button
                           type="button"
-                          onClick={() => toggleMut.mutate({ id: u.id, activo: u.activo })}
-                          disabled={toggleMut.isPending}
-                          className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted"
+                          onClick={() => setConfirmandoEliminar(null)}
+                          className="text-xs text-muted-foreground px-2 py-1 rounded hover:bg-muted"
                         >
-                          {u.activo ? 'Desactivar' : 'Activar'}
+                          Cancelar
                         </button>
-                      )}
-                    </div>
+                      </div>
+                    ) : (
+                      <div className="inline-flex items-center gap-1 justify-end">
+                        <button
+                          type="button"
+                          onClick={() => setEditando(u)}
+                          title="Editar usuario"
+                          className="text-xs text-muted-foreground hover:text-foreground p-1.5 rounded hover:bg-muted inline-flex items-center"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        {u.pendienteActivacion ? (
+                          <button
+                            type="button"
+                            onClick={() => reenviarMut.mutate(u.id)}
+                            disabled={reenviarMut.isPending}
+                            className="text-xs text-primary hover:underline px-2 py-1 inline-flex items-center gap-1"
+                          >
+                            <Mail className="h-3 w-3" />
+                            Reenviar
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => toggleMut.mutate({ id: u.id, activo: u.activo })}
+                            disabled={toggleMut.isPending}
+                            className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded hover:bg-muted"
+                          >
+                            {u.activo ? 'Desactivar' : 'Activar'}
+                          </button>
+                        )}
+                        {u.id !== miUsuarioId && (
+                          <button
+                            type="button"
+                            onClick={() => setConfirmandoEliminar(u.id)}
+                            title="Eliminar definitivamente"
+                            className="text-xs text-muted-foreground hover:text-destructive p-1.5 rounded hover:bg-destructive/10 inline-flex items-center"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}
