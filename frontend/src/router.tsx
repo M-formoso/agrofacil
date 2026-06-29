@@ -21,6 +21,7 @@ import { LoteDetallePage } from '@/pages/LoteDetallePage';
 import { ReportesPage } from '@/pages/ReportesPage';
 import { ReportePublicoPage } from '@/pages/ReportePublicoPage';
 import { AlertasPage } from '@/pages/AlertasPage';
+import { RankingPage } from '@/pages/RankingPage';
 import { AdminDashboardPage } from '@/pages/admin/AdminDashboardPage';
 import { AdminCuentasPage } from '@/pages/admin/AdminCuentasPage';
 import { AdminUsuariosPage } from '@/pages/admin/AdminUsuariosPage';
@@ -55,6 +56,7 @@ export const router = createBrowserRouter([
       { path: '/cultivos', element: <CultivosPage /> },
       { path: '/insumos', element: <InsumosPage /> },
       { path: '/resumen', element: <ResumenPage /> },
+      { path: '/ranking', element: <RankingPage /> },
       { path: '/propietarios', element: <PropietariosPage /> },
       { path: '/reportes', element: <ReportesPage /> },
       { path: '/alertas', element: <AlertasPage /> },

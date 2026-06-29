@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, GoneException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { RolEnCuenta, type Usuario, type UsuarioCuenta, type Cuenta } from '@prisma/client';
@@ -143,6 +143,51 @@ export class AuthService {
       nombre: actualizado.nombre,
       cuentaId: actualizado.cuentaId,
     };
+  }
+
+  /// Activación de cuenta vía token de invitación.
+  /// Valida que el token existe, no expiró y no fue usado. Setea la password,
+  /// marca el token como usado y devuelve los tokens de sesión.
+  async activarConToken(token: string, passwordNueva: string): Promise<TokensResponse> {
+    const invitacion = await this.prisma.tokenInvitacion.findUnique({
+      where: { token },
+      include: { usuario: true },
+    });
+    if (!invitacion) throw new NotFoundException('Token de invitación no válido');
+    if (invitacion.usadoEn) throw new GoneException('Este link ya fue usado');
+    if (invitacion.expiraEn < new Date()) throw new GoneException('El link de invitación venció — pedile uno nuevo');
+    if (!invitacion.usuario.activo) throw new ForbiddenException('Usuario desactivado');
+
+    const passwordHash = await this.generarHash(passwordNueva);
+    await this.prisma.$transaction([
+      this.prisma.usuario.update({
+        where: { id: invitacion.usuarioId },
+        data: { passwordHash, ultimoLogin: new Date() },
+      }),
+      this.prisma.tokenInvitacion.update({
+        where: { id: invitacion.id },
+        data: { usadoEn: new Date() },
+      }),
+    ]);
+
+    const usuario = await this.cargarUsuarioConMembresias({ id: invitacion.usuarioId });
+    if (!usuario || usuario.membresias.length === 0) {
+      throw new UnauthorizedException('Usuario sin membresías');
+    }
+    return this.generarTokens(this.armarUsuarioActual(usuario, usuario.membresias[0].cuentaId));
+  }
+
+  /// Devuelve si un token de invitación sigue siendo válido (para que la UI muestre estado).
+  async verificarTokenInvitacion(token: string): Promise<{ valido: boolean; motivo?: string; emailDestinatario?: string }> {
+    const invitacion = await this.prisma.tokenInvitacion.findUnique({
+      where: { token },
+      include: { usuario: { select: { email: true, nombre: true, activo: true } } },
+    });
+    if (!invitacion) return { valido: false, motivo: 'no_existe' };
+    if (invitacion.usadoEn) return { valido: false, motivo: 'usado' };
+    if (invitacion.expiraEn < new Date()) return { valido: false, motivo: 'expirado' };
+    if (!invitacion.usuario.activo) return { valido: false, motivo: 'usuario_inactivo' };
+    return { valido: true, emailDestinatario: invitacion.usuario.email };
   }
 
   async cambiarPassword(usuarioId: string, passwordActual: string, passwordNueva: string): Promise<{ ok: true }> {

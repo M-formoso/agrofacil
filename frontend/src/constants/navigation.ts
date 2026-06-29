@@ -1,6 +1,6 @@
 import {
   Home, Tractor, Sprout, CalendarRange,
-  Beaker, BarChart3, Wheat, CloudRain, CloudSun, Sparkles, UserPlus, FileText, Bell,
+  Beaker, BarChart3, Wheat, CloudRain, CloudSun, Sparkles, UserPlus, FileText, Bell, Trophy,
   type LucideIcon,
 } from 'lucide-react';
 import type { RolEnCuenta } from '@/stores/authStore';
@@ -67,6 +67,7 @@ export const navGroups: NavGroup[] = [
     label: 'Análisis',
     items: [
       { to: '/resumen',  label: 'Resumen',  icon: BarChart3, keywords: ['resultado', 'margen', 'punto eq'] },
+      { to: '/ranking',  label: 'Ranking',  icon: Trophy,    keywords: ['comparar', 'mejor', 'peor', 'productivo', 'costos'] },
       { to: '/reportes', label: 'Reportes', icon: FileText,  keywords: ['compartir', 'pdf', 'link', 'comentarios'] },
       { to: '/alertas',  label: 'Alertas',  icon: Bell,      keywords: ['notificaciones', 'aviso', 'recordatorio'] },
     ],

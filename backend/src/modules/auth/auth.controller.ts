@@ -1,6 +1,7 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Patch, Post, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import {
+  ActivarDto,
   ActualizarPerfilDto,
   CambiarPasswordDto,
   LoginDto,
@@ -35,6 +36,19 @@ export class AuthController {
   @HttpCode(HttpStatus.CREATED)
   registro(@Body() dto: RegistroDto) {
     return this.service.registrar(dto);
+  }
+
+  @Public()
+  @Get('invitacion/:token')
+  verificarInvitacion(@Param('token') token: string) {
+    return this.service.verificarTokenInvitacion(token);
+  }
+
+  @Public()
+  @Post('activar')
+  @HttpCode(HttpStatus.OK)
+  activar(@Body() dto: ActivarDto) {
+    return this.service.activarConToken(dto.token, dto.password);
   }
 
   @UseGuards(JwtAuthGuard)

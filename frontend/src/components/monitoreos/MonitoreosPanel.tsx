@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  AlertTriangle, Bug, Camera, ClipboardEdit, MapPin, Plus, Sprout, Trash2,
+  AlertTriangle, Bug, Camera, ClipboardEdit, FileText, MapPin, Plus, Sprout, Trash2,
 } from 'lucide-react';
+import { GenerarReporteSheet } from '@/components/reportes/GenerarReporteSheet';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -125,6 +126,7 @@ function MonitoreoCard({
 }) {
   const Icon = ICONO_TIPO[monitoreo.tipo];
   const tieneGeo = monitoreo.latitud !== null && monitoreo.longitud !== null;
+  const [generandoReporte, setGenerandoReporte] = useState(false);
 
   return (
     <motion.li
@@ -200,18 +202,31 @@ function MonitoreoCard({
             </div>
           )}
 
-          {onEliminar && (
-            <div className="mt-3 lg:opacity-0 lg:group-hover:opacity-100 transition">
+          <div className="mt-3 lg:opacity-0 lg:group-hover:opacity-100 transition flex items-center gap-3">
+            <button
+              onClick={() => setGenerandoReporte(true)}
+              className="text-xs text-primary hover:underline flex items-center gap-1"
+            >
+              <FileText className="h-3 w-3" /> Compartir reporte
+            </button>
+            {onEliminar && (
               <button
                 onClick={onEliminar}
                 className="text-xs text-destructive hover:underline flex items-center gap-1"
               >
                 <Trash2 className="h-3 w-3" /> Eliminar
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
+      <GenerarReporteSheet
+        open={generandoReporte}
+        tipo="monitoreo"
+        parametros={{ monitoreoId: monitoreo.id }}
+        tituloSugerido={`Monitoreo ${monitoreo.tipo.replace('_', ' ')} — ${formatearFecha(monitoreo.fecha)}`}
+        onClose={() => setGenerandoReporte(false)}
+      />
     </motion.li>
   );
 }

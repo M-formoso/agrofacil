@@ -66,9 +66,27 @@ model Usuario {
   reportes     Reporte[]
   comentariosReporte ComentarioReporte[]
   alertas      Alerta[]
+  invitaciones TokenInvitacion[]
 
   @@index([cuentaId])
   @@map("usuarios")
+}
+
+/// Token de invitación. Lo genera el superadmin (o un ingeniero invitando)
+/// al crear un usuario sin password. El usuario llega vía email con el link
+/// /activar/:token, define su password y el token se marca como usado.
+model TokenInvitacion {
+  id        String    @id @default(uuid())
+  usuarioId String    @map("usuario_id")
+  token     String    @unique
+  expiraEn  DateTime  @map("expira_en")
+  usadoEn   DateTime? @map("usado_en")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  usuario   Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
+  @@map("tokens_invitacion")
 }
 
 /// Many-to-many entre Usuario y Cuenta. Permite que un ingeniero atienda
@@ -528,6 +546,9 @@ enum TipoReporte {
   lote_campania
   campania
   establecimiento
+  monitoreo
+  cultivo_campania
+  anual
 }
 
 model Reporte {

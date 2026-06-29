@@ -7,13 +7,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Sheet } from '@/components/ui/Sheet';
-import { reportesService, urlReportePublico, type ReporteDetalle } from '@/services/reportesService';
+import { reportesService, urlReportePublico, type ReporteDetalle, type TipoReporte } from '@/services/reportesService';
 import { extraerMensajeError } from '@/lib/apiClient';
 import { cn } from '@/lib/utils';
 
 interface Props {
   open: boolean;
-  loteCampaniaId: string;
+  /** Compatibilidad: si está, el sheet asume tipo=lote_campania. */
+  loteCampaniaId?: string;
+  /** Modo extendido: pasá tipo + parametros directamente. */
+  tipo?: TipoReporte;
+  parametros?: Record<string, string>;
   /** Pre-rellena el título sugerido. */
   tituloSugerido?: string;
   onClose: () => void;
@@ -26,12 +30,18 @@ const OPCIONES_VALIDEZ: { value: number | null; label: string }[] = [
   { value: null, label: 'Sin expiración' },
 ];
 
-export function GenerarReporteSheet({ open, loteCampaniaId, tituloSugerido, onClose }: Props) {
+export function GenerarReporteSheet({
+  open, loteCampaniaId, tipo, parametros, tituloSugerido, onClose,
+}: Props) {
   const qc = useQueryClient();
   const [titulo, setTitulo] = useState(tituloSugerido ?? '');
   const [diasValidez, setDiasValidez] = useState<number | null>(90);
   const [generado, setGenerado] = useState<ReporteDetalle | null>(null);
   const [copiado, setCopiado] = useState(false);
+
+  // Resuelve tipo + parámetros: si vienen explícitos, usa esos; sino, modo compat lote_campania.
+  const tipoFinal: TipoReporte = tipo ?? 'lote_campania';
+  const parametrosFinal = parametros ?? (loteCampaniaId ? { loteCampaniaId } : {});
 
   const cerrarYReset = () => {
     setGenerado(null);
@@ -44,8 +54,8 @@ export function GenerarReporteSheet({ open, loteCampaniaId, tituloSugerido, onCl
   const crear = useMutation({
     mutationFn: () =>
       reportesService.crear({
-        tipo: 'lote_campania',
-        parametros: { loteCampaniaId },
+        tipo: tipoFinal,
+        parametros: parametrosFinal,
         titulo: titulo.trim() || undefined,
         diasValidez,
       }),
@@ -151,9 +161,11 @@ export function GenerarReporteSheet({ open, loteCampaniaId, tituloSugerido, onCl
 
           <div className="rounded-lg bg-muted/40 p-3 text-xs text-muted-foreground leading-relaxed">
             <FileText className="h-3.5 w-3.5 inline-block mr-1 -mt-0.5" />
-            El reporte incluye: identificación del lote, cultivo, campaña; superficie, rinde,
-            precio; desglose completo de costos y márgenes; punto de equilibrio y los últimos
-            10 monitoreos con fotos. Es un snapshot — cambios posteriores no se reflejan.
+            {tipoFinal === 'monitoreo' && 'Incluye foto, observaciones, prescripción y contexto del lote.'}
+            {tipoFinal === 'cultivo_campania' && 'Suma todos los lotes con ese cultivo en la campaña, con detalle por lote.'}
+            {tipoFinal === 'anual' && 'Agrupa todos los lote-campaña que cruzan el año, con detalle por cultivo y por lote.'}
+            {tipoFinal === 'lote_campania' && 'Incluye datos del lote, costos, márgenes, punto de equilibrio y últimos monitoreos.'}
+            {' '}Es un snapshot — cambios posteriores no se reflejan.
           </div>
 
           <div className="flex justify-end gap-2 border-t border-border pt-4">

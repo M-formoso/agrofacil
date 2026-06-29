@@ -101,6 +101,146 @@ export class CalculosService {
     }));
   }
 
+  /**
+   * Agrega resultados de una campaña por establecimiento. Útil para la
+   * vista "Analizar campaña por campo": un campo puede tener N lotes con
+   * cultivos distintos y queremos el rollup a nivel campo.
+   */
+  async agregarPorEstablecimiento(cuentaId: string, campaniaId: string) {
+    const lcs = await this.prisma.loteCampania.findMany({
+      where: { cuentaId, campaniaId, activo: true },
+      include: {
+        lote: { include: { establecimiento: true } },
+        cultivo: true,
+        labores: { where: { activo: true } },
+        insumosAplicados: { where: { activo: true } },
+      },
+    });
+    if (lcs.length === 0) return [];
+
+    const porEst = new Map<
+      string,
+      {
+        establecimientoId: string;
+        establecimientoNombre: string;
+        cantidadLotes: number;
+        cultivos: Set<string>;
+        superficieHa: Decimal;
+        ingresoBruto: Decimal;
+        costoTotal: Decimal;
+        margenNeto: Decimal;
+        algunoProyectado: boolean;
+      }
+    >();
+
+    for (const lc of lcs) {
+      const r = this.computarResultado(this.aplicarFallbackArrendamiento(lc));
+      const estId = lc.lote.establecimientoId;
+      const acc = porEst.get(estId) ?? {
+        establecimientoId: estId,
+        establecimientoNombre: lc.lote.establecimiento.nombre,
+        cantidadLotes: 0,
+        cultivos: new Set<string>(),
+        superficieHa: new Decimal(0),
+        ingresoBruto: new Decimal(0),
+        costoTotal: new Decimal(0),
+        margenNeto: new Decimal(0),
+        algunoProyectado: false,
+      };
+      acc.cantidadLotes += 1;
+      acc.cultivos.add(lc.cultivo.nombre);
+      acc.superficieHa = acc.superficieHa.plus(r._raw.superficieHa);
+      acc.ingresoBruto = acc.ingresoBruto.plus(r._raw.ingresoBruto);
+      acc.costoTotal = acc.costoTotal.plus(r._raw.costoTotal);
+      acc.margenNeto = acc.margenNeto.plus(r._raw.margenNeto);
+      acc.algunoProyectado = acc.algunoProyectado || r.esProyeccion;
+      porEst.set(estId, acc);
+    }
+
+    return Array.from(porEst.values()).map((acc) => ({
+      establecimientoId: acc.establecimientoId,
+      establecimientoNombre: acc.establecimientoNombre,
+      cantidadLotes: acc.cantidadLotes,
+      cultivos: Array.from(acc.cultivos).sort(),
+      esProyeccion: acc.algunoProyectado,
+      superficieHa: toFixed2(acc.superficieHa),
+      ingresoBruto: toFixed2(acc.ingresoBruto),
+      costoTotal: toFixed2(acc.costoTotal),
+      margenNeto: toFixed2(acc.margenNeto),
+      ingresoBrutoHa: acc.superficieHa.isZero() ? '0.00' : toFixed2(acc.ingresoBruto.div(acc.superficieHa)),
+      costoTotalHa: acc.superficieHa.isZero() ? '0.00' : toFixed2(acc.costoTotal.div(acc.superficieHa)),
+      margenNetoHa: acc.superficieHa.isZero() ? '0.00' : toFixed2(acc.margenNeto.div(acc.superficieHa)),
+    }));
+  }
+
+  /**
+   * Ranking de lote-campaña ordenable por margen, rinde o costo. El
+   * parámetro `enfoque` ajusta qué columnas devolver primero:
+   *  - 'productivo': muestra rinde, ingreso, margen
+   *  - 'costos': muestra costos directos, arrendamiento, total
+   */
+  async rankingLotes(
+    cuentaId: string,
+    params: {
+      campaniaId?: string;
+      cultivoId?: string;
+      establecimientoId?: string;
+      ordenarPor?: 'margen_neto' | 'margen_neto_ha' | 'rinde' | 'costo_total_ha' | 'ingreso_bruto';
+      enfoque?: 'productivo' | 'costos';
+    },
+  ) {
+    const lcs = await this.prisma.loteCampania.findMany({
+      where: {
+        cuentaId,
+        activo: true,
+        ...(params.campaniaId && { campaniaId: params.campaniaId }),
+        ...(params.cultivoId && { cultivoId: params.cultivoId }),
+        ...(params.establecimientoId && { lote: { establecimientoId: params.establecimientoId } }),
+      },
+      include: {
+        lote: { include: { establecimiento: true } },
+        cultivo: true,
+        campania: { select: { id: true, nombre: true } },
+        labores: { where: { activo: true } },
+        insumosAplicados: { where: { activo: true } },
+      },
+    });
+
+    const filas = lcs.map((lc) => {
+      const r = this.computarResultado(this.aplicarFallbackArrendamiento(lc));
+      return {
+        loteCampaniaId: lc.id,
+        lote: lc.lote.nombre,
+        establecimiento: lc.lote.establecimiento.nombre,
+        campania: lc.campania.nombre,
+        cultivo: lc.cultivo.nombre,
+        esProyeccion: r.esProyeccion,
+        superficieHa: r.superficieHa,
+        rinde: r.rinde,
+        rindeFuente: r.rindeFuente,
+        ingresoBruto: r.ingresoBruto,
+        ingresoBrutoHa: r.superficieHa === '0.00' ? '0.00' : toFixed2(new Decimal(r.ingresoBruto).div(new Decimal(r.superficieHa))),
+        costoDirecto: r.costos.directo,
+        costoArrendamiento: r.costos.arrendamiento,
+        costoTotal: r.costos.total,
+        costoTotalHa: r.costos.totalHa,
+        margenNeto: r.margenes.neto,
+        margenNetoHa: r.margenes.netoHa,
+        puntoEquilibrioQqHa: r.puntoEquilibrio.rindeQqHa,
+      };
+    });
+
+    const orden = params.ordenarPor ?? (params.enfoque === 'costos' ? 'costo_total_ha' : 'margen_neto_ha');
+    const cmp = (a: typeof filas[number], b: typeof filas[number]) => {
+      const va = Number(a[orden as keyof typeof a] ?? 0);
+      const vb = Number(b[orden as keyof typeof b] ?? 0);
+      // Para costos, menor es mejor; para los demás, mayor es mejor.
+      return orden.startsWith('costo') ? va - vb : vb - va;
+    };
+    filas.sort(cmp);
+    return { ordenarPor: orden, enfoque: params.enfoque ?? 'productivo', filas };
+  }
+
   async resumenCampania(cuentaId: string, campaniaId: string) {
     const lcs = await this.prisma.loteCampania.findMany({
       where: { cuentaId, campaniaId, activo: true },

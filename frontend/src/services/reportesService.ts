@@ -1,7 +1,13 @@
 import axios from 'axios';
 import { apiClient } from '@/lib/apiClient';
 
-export type TipoReporte = 'lote_campania' | 'campania' | 'establecimiento';
+export type TipoReporte =
+  | 'lote_campania'
+  | 'campania'
+  | 'establecimiento'
+  | 'monitoreo'
+  | 'cultivo_campania'
+  | 'anual';
 
 export interface ReporteResumen {
   id: string;

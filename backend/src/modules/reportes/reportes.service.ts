@@ -93,6 +93,30 @@ export class ReportesService {
       const snap = await this.snapshotLoteCampania(user.cuentaId, id);
       titulo = titulo ?? `${snap.lote.nombre} · ${snap.cultivo.nombre} · ${snap.campania.nombre}`;
       datosSnapshot = snap;
+    } else if (dto.tipo === 'monitoreo') {
+      const id = dto.parametros.monitoreoId;
+      if (!id) throw new BadRequestException('parametros.monitoreoId requerido');
+      const snap = await this.snapshotMonitoreo(user.cuentaId, id);
+      titulo = titulo ?? `Monitoreo ${snap.tipo.replace('_', ' ')} — ${snap.loteCampania.lote.nombre} (${snap.fecha.slice(0, 10)})`;
+      datosSnapshot = snap;
+    } else if (dto.tipo === 'cultivo_campania') {
+      const campaniaId = dto.parametros.campaniaId;
+      const cultivoId = dto.parametros.cultivoId;
+      if (!campaniaId || !cultivoId) {
+        throw new BadRequestException('parametros.campaniaId y parametros.cultivoId requeridos');
+      }
+      const snap = await this.snapshotCultivoCampania(user.cuentaId, campaniaId, cultivoId);
+      titulo = titulo ?? `${snap.cultivo.nombre} · ${snap.campania.nombre} — ${snap.totales.lotes} lote(s)`;
+      datosSnapshot = snap;
+    } else if (dto.tipo === 'anual') {
+      const anio = parseInt(dto.parametros.anio ?? '', 10);
+      if (!anio || anio < 2000 || anio > 2100) {
+        throw new BadRequestException('parametros.anio requerido (ej. "2026")');
+      }
+      const establecimientoId = dto.parametros.establecimientoId ?? null;
+      const snap = await this.snapshotAnual(user.cuentaId, anio, establecimientoId);
+      titulo = titulo ?? `Reporte ${anio}${snap.establecimiento ? ` — ${snap.establecimiento.nombre}` : ' — todos los campos'}`;
+      datosSnapshot = snap;
     } else {
       throw new BadRequestException(`Tipo de reporte ${dto.tipo} aún no implementado`);
     }
@@ -240,6 +264,209 @@ export class ReportesService {
       })),
       monitoreos: lc.monitoreos,
       resultado,
+      generadoEn: new Date().toISOString(),
+    };
+  }
+
+  /** Snapshot de un solo monitoreo: foto + observaciones + prescripción + contexto. */
+  private async snapshotMonitoreo(cuentaId: string, monitoreoId: string) {
+    const m = await this.prisma.monitoreo.findFirst({
+      where: { id: monitoreoId, cuentaId, activo: true },
+      include: {
+        autor: { select: { id: true, nombre: true } },
+        fotos: { orderBy: { orden: 'asc' } },
+        loteCampania: {
+          include: {
+            lote: { include: { establecimiento: { select: { id: true, nombre: true } } } },
+            cultivo: { select: { id: true, nombre: true } },
+            campania: { select: { id: true, nombre: true } },
+          },
+        },
+      },
+    });
+    if (!m) throw new NotFoundException('Monitoreo no encontrado');
+    return {
+      id: m.id,
+      tipo: m.tipo,
+      fecha: m.fecha.toISOString(),
+      urgencia: m.urgencia,
+      observaciones: m.observaciones,
+      prescripcion: m.prescripcion,
+      latitud: m.latitud?.toString() ?? null,
+      longitud: m.longitud?.toString() ?? null,
+      fotos: m.fotos,
+      autor: m.autor,
+      loteCampania: {
+        id: m.loteCampania.id,
+        lote: { id: m.loteCampania.lote.id, nombre: m.loteCampania.lote.nombre },
+        establecimiento: m.loteCampania.lote.establecimiento,
+        cultivo: m.loteCampania.cultivo,
+        campania: m.loteCampania.campania,
+      },
+      generadoEn: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Snapshot de TODOS los lotes con un cultivo en una campaña: agrega
+   * superficies, costos, ingresos y márgenes; recalcula los /ha sobre
+   * la superficie agregada (no promedia promedios).
+   */
+  private async snapshotCultivoCampania(cuentaId: string, campaniaId: string, cultivoId: string) {
+    const [campania, cultivo, agregado] = await Promise.all([
+      this.prisma.campania.findFirst({ where: { id: campaniaId, cuentaId, activo: true } }),
+      this.prisma.cultivo.findFirst({ where: { id: cultivoId } }),
+      this.calculos.agregarPorCultivo(cuentaId, campaniaId),
+    ]);
+    if (!campania) throw new NotFoundException('Campaña no encontrada');
+    if (!cultivo) throw new NotFoundException('Cultivo no encontrado');
+
+    const delCultivo = agregado.find((a) => a.cultivoId === cultivoId);
+    if (!delCultivo) {
+      throw new NotFoundException(
+        `No hay lotes con cultivo "${cultivo.nombre}" en la campaña "${campania.nombre}"`,
+      );
+    }
+
+    const lcs = await this.prisma.loteCampania.findMany({
+      where: { cuentaId, campaniaId, cultivoId, activo: true },
+      include: {
+        lote: { include: { establecimiento: { select: { id: true, nombre: true } } } },
+      },
+      orderBy: { lote: { nombre: 'asc' } },
+    });
+
+    const detallePorLote = await Promise.all(
+      lcs.map(async (lc) => {
+        const r = await this.calculos.calcularResultadoLote(cuentaId, lc.id);
+        return {
+          loteCampaniaId: lc.id,
+          lote: { id: lc.lote.id, nombre: lc.lote.nombre },
+          establecimiento: lc.lote.establecimiento,
+          superficieHa: lc.superficieSembradaHa.toString(),
+          rinde: r.rinde,
+          rindeFuente: r.rindeFuente,
+          ingresoBruto: r.ingresoBruto,
+          costoTotal: r.costos.total,
+          margenNeto: r.margenes.neto,
+          margenNetoHa: r.margenes.netoHa,
+        };
+      }),
+    );
+
+    return {
+      campania: { id: campania.id, nombre: campania.nombre },
+      cultivo: { id: cultivo.id, nombre: cultivo.nombre },
+      totales: {
+        lotes: lcs.length,
+        superficieHa: delCultivo.superficieHa,
+        ingresoBruto: delCultivo.ingresoBruto,
+        costoTotal: delCultivo.costoTotal,
+        margenNeto: delCultivo.margenNeto,
+        margenNetoHa: delCultivo.margenNetoHa,
+      },
+      porLote: detallePorLote,
+      generadoEn: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Snapshot anual: agrega TODOS los lote_campania que cruzan el año,
+   * agrupando por cultivo y opcionalmente por establecimiento.
+   */
+  private async snapshotAnual(cuentaId: string, anio: number, establecimientoId: string | null) {
+    const inicioAnio = new Date(`${anio}-01-01T00:00:00Z`);
+    const finAnio = new Date(`${anio}-12-31T23:59:59Z`);
+
+    const establecimiento = establecimientoId
+      ? await this.prisma.establecimiento.findFirst({
+          where: { id: establecimientoId, cuentaId, activo: true },
+          select: { id: true, nombre: true, ubicacion: true },
+        })
+      : null;
+
+    // Lotes-campania cuya ventana cruza el año:
+    //   (fechaSiembra <= finAnio) AND (fechaCosecha IS NULL OR fechaCosecha >= inicioAnio)
+    const lcs = await this.prisma.loteCampania.findMany({
+      where: {
+        cuentaId,
+        activo: true,
+        ...(establecimientoId && { lote: { establecimientoId } }),
+        OR: [
+          { fechaSiembra: { lte: finAnio }, fechaCosecha: null },
+          { fechaSiembra: { lte: finAnio }, fechaCosecha: { gte: inicioAnio } },
+          { fechaSiembra: null, fechaCosecha: { gte: inicioAnio, lte: finAnio } },
+        ],
+      },
+      include: {
+        lote: { include: { establecimiento: { select: { id: true, nombre: true } } } },
+        cultivo: { select: { id: true, nombre: true } },
+        campania: { select: { id: true, nombre: true } },
+      },
+    });
+
+    // Resultados detalle + agrupado por cultivo
+    type Linea = {
+      loteCampaniaId: string;
+      lote: string;
+      establecimiento: string;
+      cultivo: string;
+      campania: string;
+      superficieHa: number;
+      ingresoBruto: number;
+      costoTotal: number;
+      margenNeto: number;
+    };
+
+    const lineas: Linea[] = [];
+    for (const lc of lcs) {
+      const r = await this.calculos.calcularResultadoLote(cuentaId, lc.id);
+      lineas.push({
+        loteCampaniaId: lc.id,
+        lote: lc.lote.nombre,
+        establecimiento: lc.lote.establecimiento.nombre,
+        cultivo: lc.cultivo.nombre,
+        campania: lc.campania.nombre,
+        superficieHa: Number(r.superficieHa),
+        ingresoBruto: Number(r.ingresoBruto),
+        costoTotal: Number(r.costos.total),
+        margenNeto: Number(r.margenes.neto),
+      });
+    }
+
+    // Agregaciones (sumar totales, recalcular /ha sobre sup agregada)
+    const supTotal = lineas.reduce((s, l) => s + l.superficieHa, 0);
+    const ingresoTotal = lineas.reduce((s, l) => s + l.ingresoBruto, 0);
+    const costoTotal = lineas.reduce((s, l) => s + l.costoTotal, 0);
+    const margenTotal = lineas.reduce((s, l) => s + l.margenNeto, 0);
+
+    // Por cultivo
+    const porCultivoMap = new Map<string, { cultivo: string; lotes: number; superficieHa: number; ingreso: number; costo: number; margen: number }>();
+    for (const l of lineas) {
+      const k = l.cultivo;
+      const acc = porCultivoMap.get(k) ?? { cultivo: k, lotes: 0, superficieHa: 0, ingreso: 0, costo: 0, margen: 0 };
+      acc.lotes += 1;
+      acc.superficieHa += l.superficieHa;
+      acc.ingreso += l.ingresoBruto;
+      acc.costo += l.costoTotal;
+      acc.margen += l.margenNeto;
+      porCultivoMap.set(k, acc);
+    }
+    const porCultivo = [...porCultivoMap.values()].sort((a, b) => b.margen - a.margen);
+
+    return {
+      anio,
+      establecimiento,
+      totales: {
+        lotes: lineas.length,
+        superficieHa: supTotal,
+        ingresoBruto: ingresoTotal,
+        costoTotal,
+        margenNeto: margenTotal,
+        margenNetoHa: supTotal > 0 ? margenTotal / supTotal : 0,
+      },
+      porCultivo,
+      detallePorLote: lineas,
       generadoEn: new Date().toISOString(),
     };
   }

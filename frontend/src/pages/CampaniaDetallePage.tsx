@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
-  ArrowLeft, Plus, Trash2, Loader2, Sprout, Snowflake, Sun, ArrowRight,
+  ArrowLeft, Plus, Trash2, Loader2, Sprout, CalendarRange, ArrowRight, FileText, Tractor,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,8 @@ import { lotesService } from '@/services/lotesService';
 import { cultivosService } from '@/services/cultivosService';
 import { lotesCampaniaService } from '@/services/lotesCampaniaService';
 import { variedadesService } from '@/services/variedadesService';
+import { calculosService } from '@/services/calculosService';
+import { GenerarReporteSheet } from '@/components/reportes/GenerarReporteSheet';
 import { extraerMensajeError } from '@/lib/apiClient';
 import { formatearFecha, formatearHa, formatearQqHa, formatearUsd } from '@/utils/formatters';
 import { cn } from '@/lib/utils';
@@ -82,18 +84,12 @@ export function CampaniaDetallePage() {
       </Link>
 
       <header className="rounded-2xl bg-surface border border-border p-4 sm:p-6 flex items-start sm:items-center gap-3 sm:gap-4 relative overflow-hidden">
-        <div className={cn(
-          'h-12 w-12 sm:h-14 sm:w-14 rounded-xl flex items-center justify-center shrink-0',
-          campania.tipo === 'fina' ? 'bg-info/10 text-info' : 'bg-warning/10 text-warning',
-        )}>
-          {campania.tipo === 'fina' ? <Snowflake className="h-6 w-6 sm:h-7 sm:w-7" /> : <Sun className="h-6 w-6 sm:h-7 sm:w-7" />}
+        <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-xl flex items-center justify-center shrink-0 bg-primary/10 text-primary">
+          <CalendarRange className="h-6 w-6 sm:h-7 sm:w-7" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className={cn(
-            'text-[11px] uppercase tracking-widest font-semibold',
-            campania.tipo === 'fina' ? 'text-info' : 'text-warning',
-          )}>
-            Campaña {campania.tipo}
+          <p className="text-[11px] uppercase tracking-widest font-semibold text-primary">
+            Campaña
           </p>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight truncate">{campania.nombre}</h1>
           <p className="text-xs text-muted-foreground mt-0.5 truncate">
@@ -106,6 +102,8 @@ export function CampaniaDetallePage() {
           <span className="hidden sm:inline">Asignar lote</span>
         </Button>
       </header>
+
+      <CampaniaPorEstablecimiento campaniaId={id!} />
 
       {!lcList || lcList.items.length === 0 ? (
         <EmptyState
@@ -487,5 +485,117 @@ function AsignarLoteSheet({
         </div>
       </form>
     </Sheet>
+  );
+}
+
+// ============================================================
+// Vista "Por establecimiento" + acciones de reporte
+// ============================================================
+function CampaniaPorEstablecimiento({ campaniaId }: { campaniaId: string }) {
+  const [reporteAnual, setReporteAnual] = useState(false);
+  const [reporteCultivoId, setReporteCultivoId] = useState<{ id: string; nombre: string } | null>(null);
+
+  const { data: porCampo } = useQuery({
+    queryKey: ['campania-por-establecimiento', campaniaId],
+    queryFn: () => calculosService.porEstablecimiento(campaniaId),
+  });
+  const { data: porCultivo } = useQuery({
+    queryKey: ['campania-por-cultivo', campaniaId],
+    queryFn: () => calculosService.porCultivo(campaniaId),
+  });
+
+  const anioActual = new Date().getFullYear();
+
+  if (!porCampo || porCampo.length === 0) return null;
+
+  return (
+    <>
+      {/* Acciones de reporte */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold flex-1">
+          Generar reporte:
+        </p>
+        <button
+          onClick={() => setReporteAnual(true)}
+          className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md border border-border bg-surface hover:bg-muted text-xs font-medium transition"
+        >
+          <FileText className="h-3.5 w-3.5" /> Anual {anioActual}
+        </button>
+        {porCultivo?.map((c) => (
+          <button
+            key={c.cultivoId}
+            onClick={() => setReporteCultivoId({ id: c.cultivoId, nombre: c.cultivoNombre })}
+            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md border border-border bg-surface hover:bg-muted text-xs font-medium transition capitalize"
+          >
+            <FileText className="h-3.5 w-3.5" /> {c.cultivoNombre}
+          </button>
+        ))}
+      </div>
+
+      {/* Vista por campo */}
+      <section className="space-y-3">
+        <h2 className="text-sm font-bold text-foreground uppercase tracking-wide flex items-center gap-2">
+          <Tractor className="h-4 w-4 text-primary" />
+          Por campo
+        </h2>
+        <ul className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          {porCampo.map((e) => (
+            <li key={e.establecimientoId}>
+              <Link
+                to={`/establecimientos/${e.establecimientoId}`}
+                className="block rounded-xl border border-border bg-surface p-4 hover:border-primary/40 hover:shadow-lift transition group"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-foreground truncate">{e.establecimientoNombre}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {e.cantidadLotes} lote(s) · {formatearHa(e.superficieHa)}
+                    </p>
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary shrink-0" />
+                </div>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-2 capitalize">
+                  {e.cultivos.join(' · ')}
+                </p>
+                <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-border">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Ingreso</p>
+                    <p className="text-sm font-semibold tabular-nums">{formatearUsd(e.ingresoBruto)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Costo</p>
+                    <p className="text-sm font-semibold tabular-nums">{formatearUsd(e.costoTotal)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Margen</p>
+                    <p className={cn(
+                      'text-sm font-bold tabular-nums',
+                      Number(e.margenNeto) >= 0 ? 'text-primary' : 'text-destructive',
+                    )}>
+                      {formatearUsd(e.margenNeto)}
+                    </p>
+                  </div>
+                </div>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <GenerarReporteSheet
+        open={reporteAnual}
+        tipo="anual"
+        parametros={{ anio: String(anioActual) }}
+        tituloSugerido={`Reporte ${anioActual}`}
+        onClose={() => setReporteAnual(false)}
+      />
+      <GenerarReporteSheet
+        open={!!reporteCultivoId}
+        tipo="cultivo_campania"
+        parametros={reporteCultivoId ? { campaniaId, cultivoId: reporteCultivoId.id } : undefined}
+        tituloSugerido={reporteCultivoId ? `${reporteCultivoId.nombre}` : undefined}
+        onClose={() => setReporteCultivoId(null)}
+      />
+    </>
   );
 }

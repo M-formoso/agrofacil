@@ -87,7 +87,92 @@ export function ReportePublicoPage() {
     );
   }
 
+  if (data.tipo === 'monitoreo') return <ReporteMonitoreo reporte={data} />;
+  if (data.tipo === 'cultivo_campania') return <ReporteCultivoCampania reporte={data} />;
+  if (data.tipo === 'anual') return <ReporteAnual reporte={data} />;
   return <ReporteLoteCampania reporte={data} />;
+}
+
+// ============================================================
+// Snapshot types nuevos
+// ============================================================
+interface SnapshotMonitoreo {
+  id: string;
+  tipo: string;
+  fecha: string;
+  urgencia: string;
+  observaciones: string;
+  prescripcion: string | null;
+  latitud: string | null;
+  longitud: string | null;
+  fotos: { url: string }[];
+  autor: { id: string; nombre: string };
+  loteCampania: {
+    lote: { id: string; nombre: string };
+    establecimiento: { id: string; nombre: string };
+    cultivo: { id: string; nombre: string };
+    campania: { id: string; nombre: string };
+  };
+  generadoEn: string;
+}
+
+interface SnapshotCultivoCampania {
+  campania: { id: string; nombre: string };
+  cultivo: { id: string; nombre: string };
+  totales: {
+    lotes: number;
+    superficieHa: string;
+    ingresoBruto: string;
+    costoTotal: string;
+    margenNeto: string;
+    margenNetoHa: string;
+  };
+  porLote: Array<{
+    loteCampaniaId: string;
+    lote: { id: string; nombre: string };
+    establecimiento: { id: string; nombre: string };
+    superficieHa: string;
+    rinde: string;
+    rindeFuente: 'real' | 'estimado';
+    ingresoBruto: string;
+    costoTotal: string;
+    margenNeto: string;
+    margenNetoHa: string;
+  }>;
+  generadoEn: string;
+}
+
+interface SnapshotAnual {
+  anio: number;
+  establecimiento: { id: string; nombre: string; ubicacion: string | null } | null;
+  totales: {
+    lotes: number;
+    superficieHa: number;
+    ingresoBruto: number;
+    costoTotal: number;
+    margenNeto: number;
+    margenNetoHa: number;
+  };
+  porCultivo: Array<{
+    cultivo: string;
+    lotes: number;
+    superficieHa: number;
+    ingreso: number;
+    costo: number;
+    margen: number;
+  }>;
+  detallePorLote: Array<{
+    loteCampaniaId: string;
+    lote: string;
+    establecimiento: string;
+    cultivo: string;
+    campania: string;
+    superficieHa: number;
+    ingresoBruto: number;
+    costoTotal: number;
+    margenNeto: number;
+  }>;
+  generadoEn: string;
 }
 
 function ReporteLoteCampania({ reporte }: { reporte: ReportePublico }) {
@@ -351,4 +436,249 @@ function Icono({ tipo }: { tipo: string }) {
     tipo === 'general' ? Calendar :
     Sprout;
   return <Icon className="h-3.5 w-3.5 text-primary" />;
+}
+
+// ============================================================
+// Reporte de Monitoreo
+// ============================================================
+function ReporteMonitoreo({ reporte }: { reporte: ReportePublico }) {
+  const snap = reporte.datosSnapshot as SnapshotMonitoreo;
+  return (
+    <div className="min-h-screen bg-white text-foreground">
+      <BarraSuperior />
+      <article className="max-w-4xl mx-auto px-6 py-8 print:px-0 print:py-4">
+        <header className="pb-6 border-b-2 border-primary mb-6">
+          <p className="text-[11px] uppercase tracking-widest text-primary font-semibold">
+            Reporte de monitoreo · {snap.tipo.replace('_', ' ')}
+          </p>
+          <h1 className="text-3xl lg:text-4xl font-bold tracking-tight mt-1">{reporte.titulo}</h1>
+          <p className="text-sm text-muted-foreground mt-2">
+            {snap.loteCampania.establecimiento.nombre} · {snap.loteCampania.lote.nombre} ·{' '}
+            <span className="capitalize">{snap.loteCampania.cultivo.nombre}</span> · {snap.loteCampania.campania.nombre}
+          </p>
+          <p className="text-xs text-muted-foreground mt-3">
+            Observado por {snap.autor.nombre} el {formatearFecha(snap.fecha)} · Urgencia <strong className="uppercase">{snap.urgencia}</strong>
+          </p>
+        </header>
+
+        <section className="mb-6">
+          <h2 className="text-lg font-bold text-foreground mb-2">Observaciones</h2>
+          <p className="text-sm whitespace-pre-line">{snap.observaciones}</p>
+        </section>
+
+        {snap.prescripcion && (
+          <section className="rounded-lg border-l-4 border-primary bg-primary/5 p-4 mb-6">
+            <p className="text-[10px] uppercase tracking-wider font-semibold text-primary">A hacer</p>
+            <p className="text-sm whitespace-pre-line mt-1">{snap.prescripcion}</p>
+          </section>
+        )}
+
+        {snap.latitud && snap.longitud && (
+          <p className="text-xs text-muted-foreground mb-6 flex items-center gap-1.5">
+            <MapPin className="h-3 w-3 text-primary" />
+            {Number(snap.latitud).toFixed(5)}, {Number(snap.longitud).toFixed(5)}
+            {' · '}
+            <a href={`https://www.google.com/maps?q=${snap.latitud},${snap.longitud}`} target="_blank" rel="noreferrer" className="text-primary hover:underline">
+              Ver en Google Maps
+            </a>
+          </p>
+        )}
+
+        {snap.fotos.length > 0 && (
+          <section className="mb-8">
+            <h2 className="text-lg font-bold text-foreground mb-3">Fotos ({snap.fotos.length})</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {snap.fotos.map((f, i) => (
+                <img
+                  key={i}
+                  src={urlFotoAbsoluta(f.url)}
+                  alt={`Foto ${i + 1}`}
+                  className="w-full aspect-square object-cover rounded-md border border-border"
+                  loading="lazy"
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
+        <FooterPie generadoEn={snap.generadoEn} />
+      </article>
+    </div>
+  );
+}
+
+// ============================================================
+// Reporte por cultivo en campaña
+// ============================================================
+function ReporteCultivoCampania({ reporte }: { reporte: ReportePublico }) {
+  const snap = reporte.datosSnapshot as SnapshotCultivoCampania;
+  return (
+    <div className="min-h-screen bg-white text-foreground">
+      <BarraSuperior />
+      <article className="max-w-4xl mx-auto px-6 py-8 print:px-0 print:py-4">
+        <header className="pb-6 border-b-2 border-primary mb-6">
+          <p className="text-[11px] uppercase tracking-widest text-primary font-semibold">
+            Reporte por cultivo
+          </p>
+          <h1 className="text-3xl lg:text-4xl font-bold tracking-tight mt-1 capitalize">
+            {snap.cultivo.nombre} · {snap.campania.nombre}
+          </h1>
+          <p className="text-sm text-muted-foreground mt-2">
+            {snap.totales.lotes} lote(s) · {Number(snap.totales.superficieHa).toFixed(1)} ha sembradas
+          </p>
+        </header>
+
+        <section className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+          <BigStat label="Ingreso bruto" value={formatearUsd(snap.totales.ingresoBruto)} />
+          <BigStat label="Costo total" value={formatearUsd(snap.totales.costoTotal)} />
+          <BigStat label="Margen neto" value={formatearUsd(snap.totales.margenNeto)} destacado />
+          <BigStat label="Margen / ha" value={formatearUsd(snap.totales.margenNetoHa)} />
+        </section>
+
+        <section className="mb-8">
+          <h2 className="text-lg font-bold text-foreground mb-3">Por lote</h2>
+          <div className="rounded-lg border border-border overflow-hidden">
+            {snap.porLote.map((l, i) => (
+              <div
+                key={l.loteCampaniaId}
+                className={`px-4 py-3 flex items-start justify-between gap-3 ${
+                  i > 0 ? 'border-t border-border' : ''
+                }`}
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-foreground">{l.lote.nombre}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {l.establecimiento.nombre} · {formatearHa(l.superficieHa)} · {formatearQqHa(l.rinde)} {l.rindeFuente}
+                  </p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-sm font-bold tabular-nums">{formatearUsd(l.margenNeto)}</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {formatearUsd(l.margenNetoHa)}/ha
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <FooterPie generadoEn={snap.generadoEn} />
+      </article>
+    </div>
+  );
+}
+
+// ============================================================
+// Reporte anual
+// ============================================================
+function ReporteAnual({ reporte }: { reporte: ReportePublico }) {
+  const snap = reporte.datosSnapshot as SnapshotAnual;
+  return (
+    <div className="min-h-screen bg-white text-foreground">
+      <BarraSuperior />
+      <article className="max-w-4xl mx-auto px-6 py-8 print:px-0 print:py-4">
+        <header className="pb-6 border-b-2 border-primary mb-6">
+          <p className="text-[11px] uppercase tracking-widest text-primary font-semibold">
+            Reporte anual {snap.anio}
+          </p>
+          <h1 className="text-3xl lg:text-4xl font-bold tracking-tight mt-1">{reporte.titulo}</h1>
+          <p className="text-sm text-muted-foreground mt-2">
+            {snap.establecimiento ? snap.establecimiento.nombre : 'Todos los campos'} ·{' '}
+            {snap.totales.lotes} lote(s) que cruzan el año
+          </p>
+        </header>
+
+        <section className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+          <BigStat label="Superficie" value={`${snap.totales.superficieHa.toFixed(1)} ha`} />
+          <BigStat label="Ingreso bruto" value={formatearUsd(snap.totales.ingresoBruto)} />
+          <BigStat label="Costo total" value={formatearUsd(snap.totales.costoTotal)} />
+          <BigStat label="Margen neto" value={formatearUsd(snap.totales.margenNeto)} destacado />
+        </section>
+
+        <section className="mb-8">
+          <h2 className="text-lg font-bold text-foreground mb-3">Por cultivo</h2>
+          <div className="rounded-lg border border-border overflow-hidden">
+            {snap.porCultivo.map((c, i) => (
+              <div
+                key={c.cultivo}
+                className={`px-4 py-3 grid grid-cols-4 gap-2 items-center ${
+                  i > 0 ? 'border-t border-border' : ''
+                }`}
+              >
+                <p className="text-sm font-semibold capitalize">{c.cultivo}</p>
+                <p className="text-xs text-muted-foreground tabular-nums">
+                  {c.lotes} lote(s) · {c.superficieHa.toFixed(0)} ha
+                </p>
+                <p className="text-xs text-muted-foreground tabular-nums text-right">
+                  {formatearUsd(c.ingreso)}
+                </p>
+                <p className={`text-sm font-bold tabular-nums text-right ${c.margen >= 0 ? 'text-primary' : 'text-destructive'}`}>
+                  {formatearUsd(c.margen)}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="mb-8 break-inside-avoid">
+          <h2 className="text-lg font-bold text-foreground mb-3">
+            Detalle por lote ({snap.detallePorLote.length})
+          </h2>
+          <div className="rounded-lg border border-border overflow-hidden text-sm">
+            {snap.detallePorLote.map((l, i) => (
+              <div
+                key={l.loteCampaniaId}
+                className={`px-4 py-2.5 grid grid-cols-12 gap-2 items-center ${
+                  i > 0 ? 'border-t border-border' : ''
+                }`}
+              >
+                <div className="col-span-5 min-w-0">
+                  <p className="font-medium truncate">{l.lote}</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {l.establecimiento} · {l.cultivo} · {l.campania}
+                  </p>
+                </div>
+                <p className="col-span-2 text-xs tabular-nums">{l.superficieHa.toFixed(1)} ha</p>
+                <p className="col-span-2 text-xs tabular-nums">{formatearUsd(l.costoTotal)}</p>
+                <p className="col-span-3 text-xs font-bold tabular-nums text-right">
+                  {formatearUsd(l.margenNeto)}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <FooterPie generadoEn={snap.generadoEn} />
+      </article>
+    </div>
+  );
+}
+
+// ============================================================
+// Helpers
+// ============================================================
+function BarraSuperior() {
+  return (
+    <div className="print:hidden border-b border-border bg-surface sticky top-0 z-10">
+      <div className="max-w-4xl mx-auto px-6 py-3 flex items-center justify-between gap-4">
+        <LogoLockup size={20} />
+        <button
+          onClick={() => window.print()}
+          className="inline-flex items-center gap-2 h-9 px-3 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary-hover transition"
+        >
+          <Printer className="h-4 w-4" />
+          Imprimir / Guardar PDF
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function FooterPie({ generadoEn }: { generadoEn: string }) {
+  return (
+    <footer className="text-[11px] text-muted-foreground border-t border-border pt-4 mt-12">
+      <p>AgroFácil · Generado el {formatearFecha(generadoEn)}</p>
+      <p>Snapshot del momento. Cambios posteriores no se reflejan acá.</p>
+    </footer>
+  );
 }

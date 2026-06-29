@@ -5,6 +5,7 @@ export interface AppConfig {
   nodeEnv: 'development' | 'production' | 'test';
   databaseUrl: string;
   corsOrigin: string;
+  appPublicUrl: string;
   jwt: {
     secret: string;
     accessExpiresIn: string;
@@ -12,6 +13,10 @@ export interface AppConfig {
   };
   anthropic: {
     apiKey: string;
+  };
+  email: {
+    resendApiKey: string;
+    from: string;
   };
   uploads: {
     /** Carpeta absoluta donde caen los archivos subidos. En dev: ./uploads. En Railway: /data/uploads (volume montado). */
@@ -24,6 +29,7 @@ export default (): AppConfig => ({
   nodeEnv: (process.env.NODE_ENV as AppConfig['nodeEnv']) ?? 'development',
   databaseUrl: process.env.DATABASE_URL ?? '',
   corsOrigin: process.env.CORS_ORIGIN ?? 'http://localhost:5173',
+  appPublicUrl: process.env.APP_PUBLIC_URL ?? 'http://localhost:5173',
   jwt: {
     secret: process.env.JWT_SECRET ?? '',
     accessExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN ?? '30m',
@@ -31,6 +37,10 @@ export default (): AppConfig => ({
   },
   anthropic: {
     apiKey: process.env.ANTHROPIC_API_KEY ?? '',
+  },
+  email: {
+    resendApiKey: process.env.RESEND_API_KEY ?? '',
+    from: process.env.EMAIL_FROM ?? 'AgroFácil <onboarding@resend.dev>',
   },
   uploads: {
     dir: resolve(process.env.UPLOADS_DIR ?? './uploads'),
