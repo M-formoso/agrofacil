@@ -237,10 +237,16 @@ model Lote {
 model Campania {
   id           String         @id @default(uuid())
   cuentaId     String         @map("cuenta_id")
+  /// Año calendario al que corresponde la campaña (ej: 2026).
+  /// Una campaña fina de invierno 2026 se siembra en mayo-julio 2026 y
+  /// cosecha a fines de 2026; una gruesa de 2026 se siembra en oct/nov
+  /// 2026 y cosecha en abril/mayo 2027. La fecha de cosecha define el año.
+  anio         Int?
+  /// Temporada dentro del año: fina (invierno) o gruesa (verano).
+  /// Todos los lotes de la campaña comparten esta temporada.
+  temporada    TipoCampania?
   nombre       String
-  /// LEGACY: el tipo fina/gruesa se mudó a LoteCampania porque en una
-  /// misma campaña puede haber lotes de distinto ciclo. Sólo se mantiene
-  /// como referencia histórica y compatibilidad.
+  /// LEGACY: alias de `temporada` para compat con código viejo.
   tipo         TipoCampania?
   fechaInicio  DateTime       @map("fecha_inicio") @db.Date
   fechaFin     DateTime?      @map("fecha_fin") @db.Date
@@ -252,6 +258,7 @@ model Campania {
   lotesCampania LoteCampania[]
 
   @@index([cuentaId])
+  @@index([cuentaId, anio, temporada])
   @@map("campanias")
 }
 

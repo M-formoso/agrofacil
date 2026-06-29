@@ -62,8 +62,12 @@ export interface Lote {
 export interface Campania {
   id: string;
   cuentaId: string;
+  /** Año calendario (2026). */
+  anio: number | null;
+  /** Fina (invierno) o gruesa (verano). */
+  temporada: TipoCampania | null;
   nombre: string;
-  /** LEGACY: el tipo (fina/gruesa) ahora vive en LoteCampania. */
+  /** LEGACY: alias de temporada para compat con código viejo. */
   tipo: TipoCampania | null;
   fechaInicio: string;
   fechaFin: string | null;

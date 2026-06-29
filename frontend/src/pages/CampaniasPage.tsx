@@ -1,12 +1,15 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Pencil, Trash2, CalendarRange, Loader2, ChevronRight } from 'lucide-react';
+import {
+  Plus, Pencil, Trash2, CalendarRange, Loader2, ChevronRight, Snowflake, Sun,
+} from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,10 +18,15 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { campaniasService } from '@/services/campaniasService';
 import { extraerMensajeError } from '@/lib/apiClient';
 import { formatearFecha } from '@/utils/formatters';
+import { cn } from '@/lib/utils';
 import type { Campania } from '@/types/agro';
+
+const anioActual = new Date().getFullYear();
 
 const schema = z
   .object({
+    anio: z.coerce.number().int().min(2000).max(2100),
+    temporada: z.enum(['fina', 'gruesa']),
     nombre: z.string().min(1, 'Requerido'),
     fechaInicio: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato YYYY-MM-DD'),
     fechaFin: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato YYYY-MM-DD').optional().or(z.literal('')),
@@ -28,16 +36,18 @@ const schema = z
       ctx.addIssue({ code: 'custom', message: 'Debe ser >= inicio', path: ['fechaFin'] });
     }
   });
-type FormData = z.infer<typeof schema>;
+type FormInput = z.input<typeof schema>;
+type FormOutput = z.output<typeof schema>;
 
 export function CampaniasPage() {
   const qc = useQueryClient();
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Campania | null>(null);
+  const [anioFiltro, setAnioFiltro] = useState<number | 'todos'>('todos');
 
   const { data, isLoading } = useQuery({
     queryKey: ['campanias'],
-    queryFn: () => campaniasService.listar({ limit: 100 }),
+    queryFn: () => campaniasService.listar({ limit: 200 }),
   });
 
   const eliminar = useMutation({
@@ -48,6 +58,23 @@ export function CampaniasPage() {
     },
     onError: (e) => toast.error(extraerMensajeError(e)),
   });
+
+  // Agrupar por año → temporada → campañas
+  const { porAnio, anios } = useMemo(() => {
+    const map = new Map<number, { fina: Campania[]; gruesa: Campania[]; sinDefinir: Campania[] }>();
+    for (const c of data?.items ?? []) {
+      const anio = c.anio ?? new Date(c.fechaInicio).getUTCFullYear();
+      const acc = map.get(anio) ?? { fina: [], gruesa: [], sinDefinir: [] };
+      if (c.temporada === 'fina') acc.fina.push(c);
+      else if (c.temporada === 'gruesa') acc.gruesa.push(c);
+      else acc.sinDefinir.push(c);
+      map.set(anio, acc);
+    }
+    const anios = Array.from(map.keys()).sort((a, b) => b - a);
+    return { porAnio: map, anios };
+  }, [data]);
+
+  const aniosVisibles = anioFiltro === 'todos' ? anios : anios.filter((a) => a === anioFiltro);
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -63,6 +90,37 @@ export function CampaniasPage() {
         </Button>
       </header>
 
+      {/* Filtro de año */}
+      {anios.length > 1 && (
+        <div className="flex gap-1.5 flex-wrap">
+          <button
+            onClick={() => setAnioFiltro('todos')}
+            className={cn(
+              'h-8 px-3 rounded-md text-xs font-medium border transition',
+              anioFiltro === 'todos'
+                ? 'border-primary bg-primary/5 text-primary'
+                : 'border-border bg-surface text-muted-foreground hover:border-primary/40',
+            )}
+          >
+            Todos
+          </button>
+          {anios.map((a) => (
+            <button
+              key={a}
+              onClick={() => setAnioFiltro(a)}
+              className={cn(
+                'h-8 px-3 rounded-md text-xs font-medium border transition tabular-nums',
+                anioFiltro === a
+                  ? 'border-primary bg-primary/5 text-primary'
+                  : 'border-border bg-surface text-muted-foreground hover:border-primary/40',
+              )}
+            >
+              {a}
+            </button>
+          ))}
+        </div>
+      )}
+
       {isLoading ? (
         <div className="space-y-3">
           {Array.from({ length: 3 }).map((_, i) => (
@@ -73,70 +131,51 @@ export function CampaniasPage() {
         <EmptyState
           icon={CalendarRange}
           title="Sin campañas todavía"
-          description="Creá tu primera campaña (ej. '2025/26 Gruesa') y empezá a asignar cultivos a tus lotes."
+          description="Elegí un año, una temporada (fina o gruesa) y nombrá tu primera campaña."
           action={{ label: 'Crear primera campaña', onClick: () => setCreating(true) }}
         />
       ) : (
-        <ul className="space-y-3">
-          <AnimatePresence mode="popLayout">
-            {data.items.map((c, i) => (
-              <motion.li
-                key={c.id}
-                layout
-                initial={{ opacity: 0, x: -8 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, scale: 0.97 }}
-                transition={{ delay: i * 0.03 }}
-              >
-                <Link
-                  to={`/campanias/${c.id}`}
-                  className="group block rounded-xl bg-surface border border-border hover:border-primary/40 hover:shadow-lift transition relative overflow-hidden"
-                >
-                  <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-primary" />
+        <div className="space-y-8">
+          {aniosVisibles.map((anio) => {
+            const grupos = porAnio.get(anio)!;
+            return (
+              <section key={anio} className="space-y-4">
+                <h2 className="text-lg font-bold text-foreground tabular-nums">Año {anio}</h2>
 
-                  <div className="pl-5 pr-4 py-4 flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                      <CalendarRange className="h-5 w-5" />
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-foreground truncate">{c.nombre}</h3>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {formatearFecha(c.fechaInicio)}{c.fechaFin ? ` → ${formatearFecha(c.fechaFin)}` : ''}
-                        {' · '}
-                        <span className="text-primary font-medium">
-                          {c._count?.lotesCampania ?? 0} lote{c._count?.lotesCampania === 1 ? '' : 's'} asignado{c._count?.lotesCampania === 1 ? '' : 's'}
-                        </span>
-                      </p>
-                    </div>
-
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition">
-                      <button
-                        onClick={(e) => { e.preventDefault(); setEditing(c); }}
-                        className="h-8 w-8 rounded-md hover:bg-muted flex items-center justify-center"
-                        aria-label="Editar"
-                      >
-                        <Pencil className="h-4 w-4 text-muted-foreground" />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          if (confirm(`¿Eliminar "${c.nombre}"?`)) eliminar.mutate(c.id);
-                        }}
-                        className="h-8 w-8 rounded-md hover:bg-destructive/10 hover:text-destructive flex items-center justify-center"
-                        aria-label="Eliminar"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-
-                    <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                  </div>
-                </Link>
-              </motion.li>
-            ))}
-          </AnimatePresence>
-        </ul>
+                {grupos.fina.length > 0 && (
+                  <BloqueTemporada
+                    temporada="fina"
+                    campanias={grupos.fina}
+                    onEdit={setEditing}
+                    onDelete={(c) => {
+                      if (confirm(`¿Eliminar "${c.nombre}"?`)) eliminar.mutate(c.id);
+                    }}
+                  />
+                )}
+                {grupos.gruesa.length > 0 && (
+                  <BloqueTemporada
+                    temporada="gruesa"
+                    campanias={grupos.gruesa}
+                    onEdit={setEditing}
+                    onDelete={(c) => {
+                      if (confirm(`¿Eliminar "${c.nombre}"?`)) eliminar.mutate(c.id);
+                    }}
+                  />
+                )}
+                {grupos.sinDefinir.length > 0 && (
+                  <BloqueTemporada
+                    temporada={null}
+                    campanias={grupos.sinDefinir}
+                    onEdit={setEditing}
+                    onDelete={(c) => {
+                      if (confirm(`¿Eliminar "${c.nombre}"?`)) eliminar.mutate(c.id);
+                    }}
+                  />
+                )}
+              </section>
+            );
+          })}
+        </div>
       )}
 
       <CampaniaSheet
@@ -148,10 +187,87 @@ export function CampaniasPage() {
   );
 }
 
+function BloqueTemporada({
+  temporada, campanias, onEdit, onDelete,
+}: {
+  temporada: 'fina' | 'gruesa' | null;
+  campanias: Campania[];
+  onEdit: (c: Campania) => void;
+  onDelete: (c: Campania) => void;
+}) {
+  const config = temporada === 'fina'
+    ? { label: 'Fina · invierno', Icon: Snowflake, color: 'text-info', bg: 'bg-info/10', border: 'border-info/30' }
+    : temporada === 'gruesa'
+    ? { label: 'Gruesa · verano', Icon: Sun, color: 'text-warning', bg: 'bg-warning/10', border: 'border-warning/30' }
+    : { label: 'Sin temporada', Icon: CalendarRange, color: 'text-muted-foreground', bg: 'bg-muted', border: 'border-border' };
+
+  return (
+    <div className="space-y-2">
+      <div className={cn('flex items-center gap-2 text-xs font-semibold uppercase tracking-wider', config.color)}>
+        <config.Icon className="h-3.5 w-3.5" />
+        {config.label}
+      </div>
+      <ul className="space-y-2">
+        <AnimatePresence mode="popLayout">
+          {campanias.map((c, i) => (
+            <motion.li
+              key={c.id}
+              layout
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, scale: 0.97 }}
+              transition={{ delay: i * 0.025 }}
+            >
+              <Link
+                to={`/campanias/${c.id}`}
+                className={cn(
+                  'group block rounded-xl bg-surface border hover:shadow-lift transition relative overflow-hidden',
+                  config.border,
+                )}
+              >
+                <div className="pl-4 pr-3 py-3 flex items-center gap-3">
+                  <div className={cn('h-10 w-10 rounded-lg flex items-center justify-center shrink-0', config.bg, config.color)}>
+                    <config.Icon className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-foreground truncate">{c.nombre}</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {formatearFecha(c.fechaInicio)}{c.fechaFin ? ` → ${formatearFecha(c.fechaFin)}` : ''}
+                      {' · '}
+                      <span className="text-primary font-medium">
+                        {c._count?.lotesCampania ?? 0} lote{c._count?.lotesCampania === 1 ? '' : 's'}
+                      </span>
+                    </p>
+                  </div>
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition">
+                    <button
+                      onClick={(e) => { e.preventDefault(); onEdit(c); }}
+                      className="h-7 w-7 rounded-md hover:bg-muted flex items-center justify-center"
+                      aria-label="Editar"
+                    >
+                      <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                    </button>
+                    <button
+                      onClick={(e) => { e.preventDefault(); onDelete(c); }}
+                      className="h-7 w-7 rounded-md hover:bg-destructive/10 hover:text-destructive flex items-center justify-center"
+                      aria-label="Eliminar"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                </div>
+              </Link>
+            </motion.li>
+          ))}
+        </AnimatePresence>
+      </ul>
+    </div>
+  );
+}
+
 function CampaniaSheet({
-  open,
-  editing,
-  onClose,
+  open, editing, onClose,
 }: {
   open: boolean;
   editing: Campania | null;
@@ -160,24 +276,33 @@ function CampaniaSheet({
   const qc = useQueryClient();
   const isEdit = !!editing;
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
+  const {
+    register, handleSubmit, watch, setValue, reset, formState: { errors },
+  } = useForm<FormInput, unknown, FormOutput>({
     resolver: zodResolver(schema),
     values: editing
       ? {
+          anio: editing.anio ?? new Date(editing.fechaInicio).getUTCFullYear(),
+          temporada: editing.temporada ?? editing.tipo ?? 'gruesa',
           nombre: editing.nombre,
           fechaInicio: editing.fechaInicio.slice(0, 10),
           fechaFin: editing.fechaFin?.slice(0, 10) ?? '',
         }
-      : { nombre: '', fechaInicio: '', fechaFin: '' },
+      : { anio: anioActual, temporada: 'gruesa', nombre: '', fechaInicio: '', fechaFin: '' },
   });
 
+  const anio = watch('anio');
+  const temporada = watch('temporada');
+
   const mutation = useMutation({
-    mutationFn: (data: FormData) => {
-      const payload: { nombre: string; fechaInicio: string; fechaFin?: string } = {
+    mutationFn: (data: FormOutput) => {
+      const payload = {
+        anio: data.anio,
+        temporada: data.temporada,
         nombre: data.nombre,
         fechaInicio: data.fechaInicio,
+        ...(data.fechaFin ? { fechaFin: data.fechaFin } : {}),
       };
-      if (data.fechaFin) payload.fechaFin = data.fechaFin;
       return isEdit ? campaniasService.actualizar(editing!.id, payload) : campaniasService.crear(payload);
     },
     onSuccess: () => {
@@ -189,23 +314,91 @@ function CampaniaSheet({
     onError: (err) => toast.error(extraerMensajeError(err)),
   });
 
+  // Sugerencia de nombre si está vacío
+  const nombreSugerido = `${anio} · ${temporada === 'fina' ? 'Fina' : 'Gruesa'}`;
+
   return (
     <Sheet
       open={open}
       onOpenChange={(o) => !o && onClose()}
       title={isEdit ? 'Editar campaña' : 'Nueva campaña'}
+      description="Elegí año, temporada y nombrala. Después le asignás lotes y cultivos."
     >
       <form onSubmit={handleSubmit((d) => mutation.mutate(d))} className="space-y-4">
+        {/* Paso 1: Año */}
         <div className="space-y-2">
-          <Label htmlFor="nombre">Nombre *</Label>
-          <Input id="nombre" placeholder="Ej: 2025/26" {...register('nombre')} />
-          {errors.nombre && <p className="text-xs text-destructive">{errors.nombre.message}</p>}
+          <Label>1) Año</Label>
+          <div className="grid grid-cols-5 gap-1.5">
+            {[anioActual - 1, anioActual, anioActual + 1].map((a) => (
+              <button
+                key={a}
+                type="button"
+                onClick={() => setValue('anio', a, { shouldValidate: true })}
+                className={cn(
+                  'h-10 rounded-md border text-sm font-medium tabular-nums transition',
+                  anio === a
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'border-border bg-surface text-muted-foreground hover:border-primary/40',
+                )}
+              >
+                {a}
+              </button>
+            ))}
+            <Input
+              type="number"
+              min="2000"
+              max="2100"
+              className="col-span-2 h-10 text-sm tabular-nums"
+              {...register('anio', { setValueAs: (v) => (v === '' ? anioActual : Number(v)) })}
+            />
+          </div>
+          {errors.anio && <p className="text-xs text-destructive">{errors.anio.message}</p>}
         </div>
 
-        <div className="rounded-lg border border-border bg-muted/40 p-3 text-xs text-muted-foreground leading-relaxed">
-          El ciclo (fina o gruesa) se elige <strong>por lote</strong> al
-          asignarle un cultivo a esta campaña, porque en una misma campaña
-          pueden convivir cultivos de invierno y de verano en distintos lotes.
+        {/* Paso 2: Temporada */}
+        <div className="space-y-2">
+          <Label>2) Temporada</Label>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setValue('temporada', 'fina', { shouldValidate: true })}
+              className={cn(
+                'h-12 rounded-lg border flex items-center justify-center gap-2 font-medium transition',
+                temporada === 'fina'
+                  ? 'border-info bg-info/10 text-info'
+                  : 'border-border bg-surface text-muted-foreground hover:border-info/40',
+              )}
+            >
+              <Snowflake className="h-4 w-4" /> Fina · invierno
+            </button>
+            <button
+              type="button"
+              onClick={() => setValue('temporada', 'gruesa', { shouldValidate: true })}
+              className={cn(
+                'h-12 rounded-lg border flex items-center justify-center gap-2 font-medium transition',
+                temporada === 'gruesa'
+                  ? 'border-warning bg-warning/10 text-warning'
+                  : 'border-border bg-surface text-muted-foreground hover:border-warning/40',
+              )}
+            >
+              <Sun className="h-4 w-4" /> Gruesa · verano
+            </button>
+          </div>
+        </div>
+
+        {/* Paso 3: Nombre + fechas */}
+        <div className="space-y-2">
+          <Label htmlFor="nombre">3) Nombre</Label>
+          <Input
+            id="nombre"
+            placeholder={nombreSugerido}
+            {...register('nombre')}
+          />
+          {errors.nombre && <p className="text-xs text-destructive">{errors.nombre.message}</p>}
+          <p className="text-[10px] text-muted-foreground">
+            Sugerencia: <code className="bg-muted/40 px-1 rounded">{nombreSugerido}</code>. Podés
+            poner algo más específico si tenés varias en el mismo año (ej: "Fina temprana").
+          </p>
         </div>
 
         <div className="grid grid-cols-2 gap-3">

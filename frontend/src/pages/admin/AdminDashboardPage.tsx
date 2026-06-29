@@ -1,8 +1,15 @@
-import { Building2, Users, BarChart3 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { Building2, Users, Mail } from 'lucide-react';
+import { adminService } from '@/services/adminService';
 
-/// Dashboard del superadmin — stub. Más adelante: KPIs (cuentas activas,
-/// usuarios totales, campañas en curso, MRR si aplica).
 export function AdminDashboardPage() {
+  const cuentasQ = useQuery({ queryKey: ['admin', 'cuentas'], queryFn: () => adminService.listarCuentas() });
+  const usuariosQ = useQuery({ queryKey: ['admin', 'usuarios'], queryFn: () => adminService.listarUsuarios() });
+
+  const cuentasActivas = cuentasQ.data?.filter((c) => c.activo).length ?? 0;
+  const usuariosActivos = usuariosQ.data?.filter((u) => u.activo).length ?? 0;
+  const pendientes = usuariosQ.data?.filter((u) => u.pendienteActivacion).length ?? 0;
+
   return (
     <div className="space-y-6">
       <div>
@@ -13,13 +20,13 @@ export function AdminDashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <KpiCard icon={Building2} label="Cuentas activas" valor="—" />
-        <KpiCard icon={Users} label="Usuarios totales" valor="—" />
-        <KpiCard icon={BarChart3} label="Campañas en curso" valor="—" />
+        <KpiCard icon={Building2} label="Cuentas activas" valor={cuentasActivas} loading={cuentasQ.isLoading} />
+        <KpiCard icon={Users} label="Usuarios activos" valor={usuariosActivos} loading={usuariosQ.isLoading} />
+        <KpiCard icon={Mail} label="Invitaciones pendientes" valor={pendientes} loading={usuariosQ.isLoading} />
       </div>
 
       <div className="bg-white border border-border rounded-xl p-6 text-sm text-muted-foreground">
-        Próximamente: gráficos de altas, retención, últimas actividades.
+        Próximamente: gráficos de altas, retención y últimas actividades por cuenta.
       </div>
     </div>
   );
@@ -28,10 +35,11 @@ export function AdminDashboardPage() {
 interface KpiCardProps {
   icon: typeof Building2;
   label: string;
-  valor: string;
+  valor: number;
+  loading?: boolean;
 }
 
-function KpiCard({ icon: Icon, label, valor }: KpiCardProps) {
+function KpiCard({ icon: Icon, label, valor, loading }: KpiCardProps) {
   return (
     <div className="bg-white border border-border rounded-xl p-4 flex items-center gap-3">
       <div className="h-10 w-10 rounded-lg bg-slate-900/5 flex items-center justify-center">
@@ -39,7 +47,7 @@ function KpiCard({ icon: Icon, label, valor }: KpiCardProps) {
       </div>
       <div>
         <p className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</p>
-        <p className="text-xl font-semibold">{valor}</p>
+        <p className="text-xl font-semibold tabular-nums">{loading ? '…' : valor}</p>
       </div>
     </div>
   );

@@ -3,6 +3,8 @@ import { getList } from './_apiHelpers';
 import type { Campania } from '@/types/agro';
 
 export interface CrearCampaniaData {
+  anio?: number;
+  temporada?: 'fina' | 'gruesa';
   nombre: string;
   fechaInicio: string;       // YYYY-MM-DD
   fechaFin?: string;
