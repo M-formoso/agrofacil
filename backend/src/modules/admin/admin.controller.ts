@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseUUIDPi
 import { CuentasAdminService } from './cuentas-admin.service';
 import { UsuariosAdminService } from './usuarios-admin.service';
 import { InvitacionesAdminService } from './invitaciones-admin.service';
+import { AnalyticsAdminService } from './analytics-admin.service';
 import { AuthService } from '../auth/auth.service';
 import { SuperAdmin } from '../../common/decorators/super-admin.decorator';
 import { SuperAdminGuard } from '../../common/guards/super-admin.guard';
@@ -24,8 +25,16 @@ export class AdminController {
     private readonly cuentas: CuentasAdminService,
     private readonly usuarios: UsuariosAdminService,
     private readonly invitaciones: InvitacionesAdminService,
+    private readonly analytics: AnalyticsAdminService,
     private readonly auth: AuthService,
   ) {}
+
+  // ===== Métricas globales =====
+
+  @Get('metricas')
+  metricasGlobales() {
+    return this.analytics.global();
+  }
 
   // ===== Cuentas (organizaciones) =====
 
@@ -43,6 +52,11 @@ export class AdminController {
   @Get('cuentas/:id')
   detalleCuenta(@Param('id', ParseUUIDPipe) id: string) {
     return this.cuentas.detalle(id);
+  }
+
+  @Get('cuentas/:id/analytics')
+  analyticsDeCuenta(@Param('id', ParseUUIDPipe) id: string) {
+    return this.analytics.cuenta(id);
   }
 
   @Patch('cuentas/:id')

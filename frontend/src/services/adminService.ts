@@ -162,4 +162,38 @@ export const adminService = {
     const res = await apiClient.post<ImpersonarResponse>(`/admin/impersonar/${cuentaId}`);
     return res.data;
   },
+
+  // Analytics
+  async analyticsDeCuenta(id: string) {
+    const res = await apiClient.get(`/admin/cuentas/${id}/analytics`);
+    return res.data as CuentaAnalytics;
+  },
+  async metricasGlobales() {
+    const res = await apiClient.get('/admin/metricas');
+    return res.data as MetricasGlobales;
+  },
 };
+
+export interface CuentaAnalytics {
+  totales: {
+    superficieHa: number;
+    ingresoUsd: number;
+    costoDirectoUsd: number;
+    margenNetoUsd: number;
+    ingresoPorHa: number;
+    margenPorHa: number;
+  };
+  cultivos: { nombre: string; superficieHa: number; producidoKg: number; producidoTn: number; rindePromedioQqHa: number; ingresoUsd: number }[];
+  topProductos: { producto: string; tipo: string; cantidad: number; unidad: string; costoUsd: number }[];
+  ultimaActividad: { monitoreo: string | null; insumo: string | null; labor: string | null; reporte: string | null };
+  timeline30dias: { fecha: string; eventos: number }[];
+  conteos: { establecimientos: number; lotes: number; campaniasActivas: number; miembrosActivos: number; monitoreos: number; reportes: number };
+}
+
+export interface MetricasGlobales {
+  cuentas: { activas: number; totales: number };
+  usuarios: { activos: number; pendientesActivacion: number };
+  operacion: { establecimientos: number; lotes: number; lotesCampania: number; campaniasActivas: number; superficieHa: number; produccionKg: number; produccionTn: number; ingresoEstimadoUsd: number };
+  superficiePorCultivo: { nombre: string; superficieHa: number }[];
+  topCuentas: { id: string; nombre: string; superficieHa: number }[];
+}

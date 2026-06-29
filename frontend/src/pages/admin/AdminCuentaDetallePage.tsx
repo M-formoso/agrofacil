@@ -1,16 +1,24 @@
 import { useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Loader2, UserMinus, Eye, Building2, Sprout, CalendarRange, Pencil } from 'lucide-react';
+import { ArrowLeft, Loader2, UserMinus, Eye, Building2, Sprout, CalendarRange, Pencil, Wheat, DollarSign, TrendingUp, Receipt, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { adminService } from '@/services/adminService';
+import { facturacionService } from '@/services/facturacionService';
 import { useAuthStore } from '@/stores/authStore';
 import { extraerMensajeError } from '@/lib/apiClient';
 import { cn } from '@/lib/utils';
 import { EditarCuentaSheet } from '@/components/admin/EditarCuentaSheet';
+import { SuscripcionSheet } from '@/components/admin/SuscripcionSheet';
+import { GenerarFacturaSheet } from '@/components/admin/GenerarFacturaSheet';
+import { StatCard } from '@/components/admin/StatCard';
 import type { RolEnCuenta } from '@/stores/authStore';
+
+const fmtNumber = (n: number) => n.toLocaleString('es-AR', { maximumFractionDigits: 0 });
+const fmtDecimal = (n: number) => n.toLocaleString('es-AR', { maximumFractionDigits: 1 });
+const fmtUsd = (n: number) => `USD ${n.toLocaleString('es-AR', { maximumFractionDigits: 0 })}`;
 
 const rolLabel: Record<string, string> = {
   ingeniero: 'Ingeniero',
@@ -25,10 +33,30 @@ export function AdminCuentaDetallePage() {
   const iniciarImpersonacion = useAuthStore((s) => s.iniciarImpersonacion);
   const [confirmandoMembresia, setConfirmandoMembresia] = useState<string | null>(null);
   const [editandoCuenta, setEditandoCuenta] = useState(false);
+  const [editandoSuscripcion, setEditandoSuscripcion] = useState(false);
+  const [generandoFactura, setGenerandoFactura] = useState(false);
 
   const q = useQuery({
     queryKey: ['admin', 'cuentas', id],
     queryFn: () => adminService.detalleCuenta(id),
+    enabled: !!id,
+  });
+
+  const analyticsQ = useQuery({
+    queryKey: ['admin', 'cuentas', id, 'analytics'],
+    queryFn: () => adminService.analyticsDeCuenta(id),
+    enabled: !!id,
+  });
+
+  const suscripcionQ = useQuery({
+    queryKey: ['admin', 'cuentas', id, 'suscripcion'],
+    queryFn: () => facturacionService.obtenerSuscripcion(id),
+    enabled: !!id,
+  });
+
+  const facturasQ = useQuery({
+    queryKey: ['admin', 'facturas', { cuentaId: id }],
+    queryFn: () => facturacionService.listarFacturas({ cuentaId: id }),
     enabled: !!id,
   });
 
@@ -115,11 +143,161 @@ export function AdminCuentaDetallePage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <StatCard icon={Building2} label="Establecimientos" valor={c._count.establecimientos} />
-        <StatCard icon={CalendarRange} label="Campañas" valor={c._count.campanias} />
-        <StatCard icon={Sprout} label="Usuarios" valor={c.membresias.length} />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <StatCard icon={Building2} label="Establecimientos" valor={c._count.establecimientos} tone="slate" />
+        <StatCard icon={CalendarRange} label="Campañas" valor={c._count.campanias} tone="violet" />
+        <StatCard icon={Sprout} label="Hectáreas" valor={analyticsQ.data ? fmtDecimal(analyticsQ.data.totales.superficieHa) : '—'} loading={analyticsQ.isLoading} tone="amber" />
+        <StatCard icon={Wheat} label="Producción (tn)"
+          valor={analyticsQ.data ? fmtNumber(analyticsQ.data.cultivos.reduce((s, c) => s + c.producidoTn, 0)) : '—'}
+          loading={analyticsQ.isLoading}
+          tone="emerald"
+        />
       </div>
+
+      {/* Analytics — Producción + Económica */}
+      {analyticsQ.data && analyticsQ.data.totales.superficieHa > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+          <StatCard icon={DollarSign} label="Ingreso estimado" valor={fmtUsd(analyticsQ.data.totales.ingresoUsd)} tone="emerald" />
+          <StatCard icon={Receipt} label="Costo directo" valor={fmtUsd(analyticsQ.data.totales.costoDirectoUsd)} tone="slate" />
+          <StatCard icon={TrendingUp}
+            label="Margen neto"
+            valor={fmtUsd(analyticsQ.data.totales.margenNetoUsd)}
+            hint={`${fmtUsd(analyticsQ.data.totales.margenPorHa)} / ha`}
+            tone={analyticsQ.data.totales.margenNetoUsd >= 0 ? 'emerald' : 'amber'}
+          />
+        </div>
+      )}
+
+      {/* Producción por cultivo */}
+      {analyticsQ.data && analyticsQ.data.cultivos.length > 0 && (
+        <section className="bg-white border border-border rounded-xl overflow-hidden">
+          <header className="px-4 py-3 border-b border-border">
+            <h2 className="text-sm font-semibold">Producción por cultivo</h2>
+          </header>
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 text-xs uppercase tracking-wider text-muted-foreground">
+              <tr>
+                <th className="text-left px-4 py-2 font-medium">Cultivo</th>
+                <th className="text-right px-4 py-2 font-medium">Superficie</th>
+                <th className="text-right px-4 py-2 font-medium">Rinde prom.</th>
+                <th className="text-right px-4 py-2 font-medium">Producción</th>
+                <th className="text-right px-4 py-2 font-medium">Ingreso</th>
+              </tr>
+            </thead>
+            <tbody>
+              {analyticsQ.data.cultivos.map((cu) => (
+                <tr key={cu.nombre} className="border-t border-border">
+                  <td className="px-4 py-3 font-medium capitalize">{cu.nombre}</td>
+                  <td className="px-4 py-3 text-right tabular-nums">{fmtDecimal(cu.superficieHa)} ha</td>
+                  <td className="px-4 py-3 text-right tabular-nums">{fmtDecimal(cu.rindePromedioQqHa)} qq/ha</td>
+                  <td className="px-4 py-3 text-right tabular-nums">{fmtNumber(cu.producidoTn)} tn</td>
+                  <td className="px-4 py-3 text-right tabular-nums">{fmtUsd(cu.ingresoUsd)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
+
+      {/* Top productos usados */}
+      {analyticsQ.data && analyticsQ.data.topProductos.length > 0 && (
+        <section className="bg-white border border-border rounded-xl overflow-hidden">
+          <header className="px-4 py-3 border-b border-border">
+            <h2 className="text-sm font-semibold">Top productos usados (insumos)</h2>
+          </header>
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 text-xs uppercase tracking-wider text-muted-foreground">
+              <tr>
+                <th className="text-left px-4 py-2 font-medium">Producto</th>
+                <th className="text-left px-4 py-2 font-medium hidden sm:table-cell">Tipo</th>
+                <th className="text-right px-4 py-2 font-medium">Cantidad</th>
+                <th className="text-right px-4 py-2 font-medium">Costo total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {analyticsQ.data.topProductos.map((p, i) => (
+                <tr key={i} className="border-t border-border">
+                  <td className="px-4 py-3 font-medium">{p.producto}</td>
+                  <td className="px-4 py-3 text-xs text-muted-foreground hidden sm:table-cell capitalize">{p.tipo}</td>
+                  <td className="px-4 py-3 text-right tabular-nums">{fmtDecimal(p.cantidad)} {p.unidad}</td>
+                  <td className="px-4 py-3 text-right tabular-nums">{fmtUsd(p.costoUsd)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
+
+      {/* Facturación */}
+      <section className="bg-white border border-border rounded-xl overflow-hidden">
+        <header className="px-4 py-3 border-b border-border flex items-center justify-between">
+          <h2 className="text-sm font-semibold">Facturación</h2>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setEditandoSuscripcion(true)} className="gap-1.5 text-xs">
+              <Pencil className="h-3.5 w-3.5" />
+              {suscripcionQ.data ? 'Editar plan' : 'Configurar plan'}
+            </Button>
+            <Button size="sm" onClick={() => setGenerandoFactura(true)} className="gap-1.5 text-xs">
+              <Plus className="h-3.5 w-3.5" />
+              Generar factura
+            </Button>
+          </div>
+        </header>
+
+        {suscripcionQ.data ? (
+          <div className="px-4 py-3 border-b border-border bg-slate-50/50 text-sm flex flex-wrap items-center gap-x-6 gap-y-1">
+            <span className="capitalize">Plan: <strong>{suscripcionQ.data.plan}</strong></span>
+            <span>Precio: <strong>USD {Number(suscripcionQ.data.precioMensualUsd).toFixed(2)}/mes</strong></span>
+            <span>Vence día <strong>{suscripcionQ.data.diaVencimiento}</strong></span>
+            <span className={suscripcionQ.data.activa ? 'text-emerald-700' : 'text-slate-500'}>
+              {suscripcionQ.data.activa ? '● Activa' : '○ Inactiva'}
+            </span>
+          </div>
+        ) : (
+          <div className="px-4 py-3 border-b border-border text-sm text-muted-foreground">
+            Esta cuenta no tiene plan configurado. Configuralo para poder generar facturas con los conceptos automáticos.
+          </div>
+        )}
+
+        {facturasQ.data && facturasQ.data.length > 0 ? (
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 text-xs uppercase tracking-wider text-muted-foreground">
+              <tr>
+                <th className="text-left px-4 py-2 font-medium">Factura</th>
+                <th className="text-left px-4 py-2 font-medium hidden sm:table-cell">Período</th>
+                <th className="text-right px-4 py-2 font-medium">Total</th>
+                <th className="text-center px-4 py-2 font-medium">Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {facturasQ.data.map((f) => (
+                <tr key={f.id} className="border-t border-border">
+                  <td className="px-4 py-3 font-mono text-xs">F-{String(f.numero).padStart(4, '0')}</td>
+                  <td className="px-4 py-3 text-xs text-muted-foreground hidden sm:table-cell">
+                    {f.periodoMes}/{f.periodoAnio}
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums">{fmtUsd(f.totalUsd)}</td>
+                  <td className="px-4 py-3 text-center">
+                    <span className={cn(
+                      'inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium',
+                      f.estado === 'pagada' ? 'bg-emerald-50 text-emerald-700' :
+                      f.estado === 'pendiente' ? 'bg-amber-50 text-amber-700' :
+                      f.estado === 'vencida' ? 'bg-red-50 text-red-700' :
+                      'bg-slate-100 text-slate-500',
+                    )}>
+                      {f.estado}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <div className="px-4 py-6 text-center text-sm text-muted-foreground">
+            Sin facturas todavía.
+          </div>
+        )}
+      </section>
 
       <section className="bg-white border border-border rounded-xl overflow-hidden">
         <header className="px-4 py-3 border-b border-border">
@@ -218,20 +396,17 @@ export function AdminCuentaDetallePage() {
         cuenta={{ id: c.id, nombre: c.nombre, emailContacto: c.emailContacto, telefono: c.telefono }}
         onClose={() => setEditandoCuenta(false)}
       />
+      <SuscripcionSheet
+        open={editandoSuscripcion}
+        cuentaId={c.id}
+        onClose={() => setEditandoSuscripcion(false)}
+      />
+      <GenerarFacturaSheet
+        open={generandoFactura}
+        cuentaIdPreseleccionada={c.id}
+        onClose={() => setGenerandoFactura(false)}
+      />
     </div>
   );
 }
 
-function StatCard({ icon: Icon, label, valor }: { icon: typeof Building2; label: string; valor: number }) {
-  return (
-    <div className="bg-white border border-border rounded-xl p-4 flex items-center gap-3">
-      <div className="h-10 w-10 rounded-lg bg-slate-900/5 flex items-center justify-center">
-        <Icon className="h-5 w-5 text-slate-700" />
-      </div>
-      <div>
-        <p className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</p>
-        <p className="text-xl font-semibold tabular-nums">{valor}</p>
-      </div>
-    </div>
-  );
-}

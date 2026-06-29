@@ -24,10 +24,12 @@ import { AlertasPage } from '@/pages/AlertasPage';
 import { RankingPage } from '@/pages/RankingPage';
 import { EquipoPage } from '@/pages/EquipoPage';
 import { AdminDashboardPage } from '@/pages/admin/AdminDashboardPage';
+import { AdminMetricasPage } from '@/pages/admin/AdminMetricasPage';
 import { AdminCuentasPage } from '@/pages/admin/AdminCuentasPage';
 import { AdminCuentaDetallePage } from '@/pages/admin/AdminCuentaDetallePage';
 import { AdminUsuariosPage } from '@/pages/admin/AdminUsuariosPage';
 import { AdminInvitacionesPage } from '@/pages/admin/AdminInvitacionesPage';
+import { AdminFacturacionPage } from '@/pages/admin/AdminFacturacionPage';
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -38,10 +40,12 @@ export const router = createBrowserRouter([
     element: <RutaSuperAdmin />,
     children: [
       { index: true, element: <AdminDashboardPage /> },
+      { path: 'metricas', element: <AdminMetricasPage /> },
       { path: 'cuentas', element: <AdminCuentasPage /> },
       { path: 'cuentas/:id', element: <AdminCuentaDetallePage /> },
       { path: 'usuarios', element: <AdminUsuariosPage /> },
       { path: 'invitaciones', element: <AdminInvitacionesPage /> },
+      { path: 'facturacion', element: <AdminFacturacionPage /> },
     ],
   },
   {

@@ -1,15 +1,17 @@
 import { Outlet, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AdminSidebar } from './AdminSidebar';
+import { AdminTopbar } from './AdminTopbar';
 
 export function AdminLayout() {
   const location = useLocation();
 
   return (
-    <div className="min-h-screen flex bg-slate-100 text-foreground">
+    <div className="min-h-screen flex bg-slate-50 text-foreground">
       <AdminSidebar />
       <div className="flex-1 min-w-0 min-h-screen flex flex-col">
-        <main className="flex-1 flex flex-col p-3 sm:p-4 lg:p-8">
+        <AdminTopbar />
+        <main className="flex-1 flex flex-col p-4 sm:p-6 lg:p-8">
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}

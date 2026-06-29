@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Building2, Users, LogOut, ShieldCheck, Mail } from 'lucide-react';
+import { LayoutDashboard, Building2, Users, Mail, Receipt, TrendingUp } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useAuthStore } from '@/stores/authStore';
+import { Logo } from '@/components/layout/Logo';
 import { cn } from '@/lib/utils';
 
 interface AdminNavItem {
@@ -11,39 +11,38 @@ interface AdminNavItem {
 }
 
 const items: AdminNavItem[] = [
-  { to: '/admin', label: 'Panel', icon: LayoutDashboard },
-  { to: '/admin/cuentas', label: 'Cuentas', icon: Building2 },
-  { to: '/admin/usuarios', label: 'Usuarios', icon: Users },
+  { to: '/admin',              label: 'Panel',        icon: LayoutDashboard },
+  { to: '/admin/metricas',     label: 'Métricas',     icon: TrendingUp },
+  { to: '/admin/cuentas',      label: 'Cuentas',      icon: Building2 },
+  { to: '/admin/usuarios',     label: 'Usuarios',     icon: Users },
   { to: '/admin/invitaciones', label: 'Invitaciones', icon: Mail },
+  { to: '/admin/facturacion',  label: 'Facturación',  icon: Receipt },
 ];
 
-/// Sidebar del panel superadmin. Tema oscuro intencional para que visualmente
-/// no se confunda con el sistema cliente (verde John Deere).
+/// Sidebar del panel superadmin — tema oscuro distinto del cliente.
+/// Logo real arriba en blanco.
 export function AdminSidebar() {
-  const logout = useAuthStore((s) => s.logout);
-  const usuario = useAuthStore((s) => s.usuario);
-
   return (
-    <aside className="hidden lg:flex w-64 shrink-0 h-screen sticky top-0 flex-col p-4">
+    <aside className="hidden lg:flex w-60 shrink-0 h-screen sticky top-0 flex-col p-4">
       <div className="relative flex-1 flex flex-col bg-slate-900 text-slate-100 rounded-2xl shadow-lift overflow-hidden">
-        {/* Brand */}
-        <div className="px-5 pt-5 pb-4 shrink-0 flex items-center gap-2">
-          <ShieldCheck className="h-5 w-5 text-emerald-400" />
-          <div>
-            <p className="text-sm font-semibold">AgroFácil</p>
-            <p className="text-[10px] uppercase tracking-widest text-slate-400">Panel admin</p>
+        {/* Brand: logo + wordmark */}
+        <div className="px-5 pt-5 pb-5 shrink-0">
+          <div className="flex items-center gap-2.5">
+            <Logo size={26} variant="light" />
+            <div>
+              <p className="text-base font-bold leading-none">
+                <span className="text-slate-300">Agro</span>
+                <span className="text-white">Facil</span>
+              </p>
+              <p className="text-[9px] uppercase tracking-[0.18em] text-emerald-400/90 mt-1 font-semibold">
+                Panel admin
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* Usuario */}
-        <div className="px-4 pb-4 border-b border-slate-800 shrink-0">
-          <p className="text-[10px] uppercase tracking-wider text-slate-400">Sesión</p>
-          <p className="text-sm font-medium truncate">{usuario?.nombre ?? '—'}</p>
-          <p className="text-[11px] text-slate-400 truncate">{usuario?.email}</p>
-        </div>
-
         {/* Nav */}
-        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
+        <nav className="flex-1 overflow-y-auto px-3 pb-3 space-y-0.5">
           {items.map((item) => (
             <NavLink
               key={item.to}
@@ -53,8 +52,8 @@ export function AdminSidebar() {
                 cn(
                   'group relative flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all',
                   isActive
-                    ? 'bg-slate-800 text-white'
-                    : 'text-slate-300 hover:bg-slate-800/60 hover:text-white',
+                    ? 'bg-white/10 text-white'
+                    : 'text-slate-400 hover:bg-white/5 hover:text-white',
                 )
               }
             >
@@ -63,11 +62,11 @@ export function AdminSidebar() {
                   {isActive && (
                     <motion.div
                       layoutId="admin-sidebar-active"
-                      className="absolute left-0 inset-y-1.5 w-1 bg-emerald-400 rounded-r-full"
+                      className="absolute left-0 inset-y-2 w-[3px] bg-emerald-400 rounded-r-full"
                       transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                     />
                   )}
-                  <item.icon className="h-4 w-4" />
+                  <item.icon className={cn('h-4 w-4 transition', isActive ? 'text-emerald-300' : 'text-slate-500 group-hover:text-slate-300')} />
                   <span>{item.label}</span>
                 </>
               )}
@@ -76,14 +75,13 @@ export function AdminSidebar() {
         </nav>
 
         {/* Footer */}
-        <div className="p-3 border-t border-slate-800 shrink-0">
-          <button
-            onClick={logout}
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition"
-          >
-            <LogOut className="h-4 w-4" />
-            <span>Salir</span>
-          </button>
+        <div className="px-4 py-3 border-t border-white/10 shrink-0">
+          <p className="text-[10px] text-slate-500 leading-relaxed">
+            AgroFácil <span className="text-slate-600">v1.0</span>
+          </p>
+          <p className="text-[10px] text-slate-600 leading-relaxed mt-0.5">
+            Gestión agropecuaria
+          </p>
         </div>
       </div>
     </aside>

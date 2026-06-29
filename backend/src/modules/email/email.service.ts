@@ -49,7 +49,8 @@ export class EmailService {
     });
   }
 
-  private async enviar(params: { to: string; subject: string; html: string; text: string }) {
+  /// Envío genérico — útil para flows distintos a invitación/recuperación.
+  async enviar(params: { to: string; subject: string; html: string; text: string }) {
     if (!this.resend) {
       this.logger.warn(`[EMAIL STUB] To: ${params.to} | Subject: ${params.subject}`);
       this.logger.warn(`[EMAIL STUB] ${params.text}`);

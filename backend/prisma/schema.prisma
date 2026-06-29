@@ -40,8 +40,80 @@ model Cuenta {
   membresias       UsuarioCuenta[]
   establecimientos Establecimiento[]
   campanias        Campania[]
+  suscripcion      SuscripcionCuenta?
+  facturas         Factura[]
 
   @@map("cuentas")
+}
+
+// ============================================================
+// Facturación (cobro a las cuentas que usan la plataforma)
+// ============================================================
+
+enum PlanFacturacion {
+  basico
+  pro
+  enterprise
+  custom
+}
+
+enum EstadoFactura {
+  pendiente
+  pagada
+  vencida
+  anulada
+}
+
+/// Plan + precio recurrente de cada cuenta. 1:1 con Cuenta — si no existe,
+/// la cuenta no tiene facturación configurada todavía.
+model SuscripcionCuenta {
+  id                String           @id @default(uuid())
+  cuentaId          String           @unique @map("cuenta_id")
+  plan              PlanFacturacion  @default(basico)
+  precioMensualUsd  Decimal          @map("precio_mensual_usd") @db.Decimal(12, 2)
+  /// Día del mes en que vence la factura (1-28).
+  diaVencimiento    Int              @default(10) @map("dia_vencimiento")
+  activa            Boolean          @default(true)
+  notaInterna       String?          @map("nota_interna") @db.Text
+  iniciadaEn        DateTime         @default(now()) @map("iniciada_en")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+
+  cuenta            Cuenta           @relation(fields: [cuentaId], references: [id], onDelete: Cascade)
+
+  @@map("suscripciones_cuenta")
+}
+
+/// Factura emitida a una cuenta por un período (mes/año). Una sola por
+/// período por cuenta para no duplicar. Incluye sus conceptos como JSON
+/// (líneas) — para el MVP suele ser una sola línea "Suscripción mensual".
+model Factura {
+  id            String        @id @default(uuid())
+  cuentaId      String        @map("cuenta_id")
+  /// Número visible "F-0001" (incremental global de la plataforma).
+  numero        Int           @unique @default(autoincrement())
+  periodoMes    Int           @map("periodo_mes")
+  periodoAnio   Int           @map("periodo_anio")
+  /// Líneas de la factura: [{ descripcion, cantidad, precioUnitarioUsd, subtotalUsd }, ...]
+  conceptos     Json
+  subtotalUsd   Decimal       @map("subtotal_usd") @db.Decimal(14, 2)
+  impuestosUsd  Decimal       @default(0) @map("impuestos_usd") @db.Decimal(14, 2)
+  totalUsd      Decimal       @map("total_usd") @db.Decimal(14, 2)
+  estado        EstadoFactura @default(pendiente)
+  emitidaEn     DateTime      @default(now()) @map("emitida_en")
+  vencimiento   DateTime      @map("vencimiento") @db.Date
+  pagadaEn      DateTime?     @map("pagada_en")
+  metodoPago    String?       @map("metodo_pago")
+  notaInterna   String?       @map("nota_interna") @db.Text
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  cuenta        Cuenta        @relation(fields: [cuentaId], references: [id], onDelete: Cascade)
+
+  @@unique([cuentaId, periodoMes, periodoAnio])
+  @@index([estado])
+  @@index([cuentaId])
+  @@map("facturas")
 }
 
 model Usuario {
