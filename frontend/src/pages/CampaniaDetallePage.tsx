@@ -27,6 +27,7 @@ const schema = z.object({
   loteId: z.string().uuid('Elegí un lote'),
   cultivoId: z.string().uuid('Elegí un cultivo'),
   variedadId: z.string().uuid().optional().or(z.literal('')),
+  tipo: z.enum(['fina', 'gruesa']).optional().or(z.literal('')),
   superficieSembradaHa: z.coerce.number().positive(),
   fechaSiembra: z.string().optional().or(z.literal('')),
   rindeEstimadoQqHa: z.coerce.number().nonnegative().optional(),
@@ -241,6 +242,7 @@ function AsignarLoteSheet({
       loteId: '',
       cultivoId: '',
       variedadId: '',
+      tipo: '',
       superficieSembradaHa: 0,
       fechaSiembra: '',
       rindeEstimadoQqHa: undefined,
@@ -282,6 +284,7 @@ function AsignarLoteSheet({
         campaniaId,
         superficieSembradaHa: data.superficieSembradaHa,
         ...(data.variedadId ? { variedadId: data.variedadId } : {}),
+        ...(data.tipo ? { tipo: data.tipo as 'fina' | 'gruesa' } : {}),
         ...(data.fechaSiembra ? { fechaSiembra: data.fechaSiembra } : {}),
         ...(data.rindeEstimadoQqHa ? { rindeEstimadoQqHa: data.rindeEstimadoQqHa } : {}),
         ...(data.precioGranoUsdTn ? { precioGranoUsdTn: data.precioGranoUsdTn } : {}),
@@ -414,6 +417,36 @@ function AsignarLoteSheet({
             )}
           </div>
         )}
+
+        <div className="space-y-2">
+          <Label>Ciclo del cultivo</Label>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setValue('tipo', 'fina')}
+              className={cn(
+                'h-10 rounded-md border text-sm font-medium transition',
+                watch('tipo') === 'fina'
+                  ? 'border-info bg-info/10 text-info'
+                  : 'border-border bg-surface hover:border-info/40 text-muted-foreground',
+              )}
+            >
+              ❄ Fina (invierno)
+            </button>
+            <button
+              type="button"
+              onClick={() => setValue('tipo', 'gruesa')}
+              className={cn(
+                'h-10 rounded-md border text-sm font-medium transition',
+                watch('tipo') === 'gruesa'
+                  ? 'border-warning bg-warning/10 text-warning'
+                  : 'border-border bg-surface hover:border-warning/40 text-muted-foreground',
+              )}
+            >
+              ☀ Gruesa (verano)
+            </button>
+          </div>
+        </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">

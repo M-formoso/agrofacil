@@ -10,6 +10,12 @@ export interface CrearLaborData {
   costoTotalUsd?: number;
   formaPago?: FormaPago;
   nota?: string;
+  /** Para siembra: densidad sembrada en sem/ha. */
+  densidadSemHa?: number | null;
+  /** Para siembra: variedad usada. */
+  variedadId?: string | null;
+  /** Datos específicos por tipo (producto, dosis, viento, etc.). */
+  datos?: Record<string, unknown> | null;
 }
 export type ActualizarLaborData = Partial<Omit<CrearLaborData, 'loteCampaniaId'>>;
 

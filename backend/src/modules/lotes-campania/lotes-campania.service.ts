@@ -85,6 +85,7 @@ export class LotesCampaniaService {
         campaniaId: dto.campaniaId,
         cultivoId: dto.cultivoId,
         variedadId: dto.variedadId ?? null,
+        tipo: dto.tipo ?? null,
         superficieSembradaHa: dto.superficieSembradaHa,
         fechaSiembra: dto.fechaSiembra ? new Date(dto.fechaSiembra) : null,
         rindeEstimadoQqHa: dto.rindeEstimadoQqHa,
@@ -106,6 +107,7 @@ export class LotesCampaniaService {
       data: {
         ...(dto.cultivoId && { cultivoId: dto.cultivoId }),
         ...(dto.variedadId !== undefined && { variedadId: dto.variedadId }),
+        ...(dto.tipo !== undefined && { tipo: dto.tipo }),
         ...(dto.superficieSembradaHa !== undefined && { superficieSembradaHa: dto.superficieSembradaHa }),
         ...(dto.fechaSiembra !== undefined && {
           fechaSiembra: dto.fechaSiembra ? new Date(dto.fechaSiembra) : null,

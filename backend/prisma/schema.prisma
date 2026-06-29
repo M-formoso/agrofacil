@@ -154,6 +154,20 @@ enum TipoCampania {
   gruesa
 }
 
+/// Clase agrológica argentina (capacidad de uso del suelo).
+/// I-IV: aptas para agricultura. V-VIII: restricciones progresivas.
+enum CapacidadUso {
+  I
+  II
+  III
+  IV
+  V
+  VI
+  VII
+  VIII
+  desconocida
+}
+
 model Establecimiento {
   id                  String   @id @default(uuid())
   cuentaId            String   @map("cuenta_id")
@@ -165,6 +179,10 @@ model Establecimiento {
   arrendamientoValor  Decimal? @map("arrendamiento_valor") @db.Decimal(14, 4)
   arrendamientoUnidad UnidadArrendamiento? @map("arrendamiento_unidad")
   superficieTotalHa   Decimal? @map("superficie_total_ha") @db.Decimal(12, 4)
+  /// Capacidad de uso del suelo (clase agrológica). Sirve para orientar
+  /// qué tipo de manejo aplicar y para futuros rankings de productividad
+  /// relativa.
+  capacidadUso        CapacidadUso? @map("capacidad_uso")
   activo              Boolean  @default(true)
   createdAt           DateTime @default(now()) @map("created_at")
   updatedAt           DateTime @updatedAt @map("updated_at")
@@ -202,7 +220,10 @@ model Campania {
   id           String         @id @default(uuid())
   cuentaId     String         @map("cuenta_id")
   nombre       String
-  tipo         TipoCampania
+  /// LEGACY: el tipo fina/gruesa se mudó a LoteCampania porque en una
+  /// misma campaña puede haber lotes de distinto ciclo. Sólo se mantiene
+  /// como referencia histórica y compatibilidad.
+  tipo         TipoCampania?
   fechaInicio  DateTime       @map("fecha_inicio") @db.Date
   fechaFin     DateTime?      @map("fecha_fin") @db.Date
   activo       Boolean        @default(true)
@@ -239,6 +260,7 @@ model Variedad {
 
   cultivo       Cultivo        @relation(fields: [cultivoId], references: [id])
   lotesCampania LoteCampania[]
+  labores       Labor[]
 
   @@unique([cultivoId, nombre])
   @@index([cultivoId])
@@ -252,6 +274,9 @@ model LoteCampania {
   campaniaId              String   @map("campania_id")
   cultivoId               String   @map("cultivo_id")
   variedadId              String?  @map("variedad_id")
+  /// Tipo de ciclo: fina o gruesa. Era de Campania pero migró acá
+  /// porque una misma campaña puede tener cultivos de ambos ciclos.
+  tipo                    TipoCampania?
   superficieSembradaHa    Decimal  @map("superficie_sembrada_ha") @db.Decimal(12, 4)
   fechaSiembra            DateTime? @map("fecha_siembra") @db.Date
   rindeEstimadoQqHa       Decimal? @map("rinde_estimado_qq_ha") @db.Decimal(10, 4)
@@ -349,14 +374,29 @@ model Labor {
   costoTotalUsd   Decimal?   @map("costo_total_usd") @db.Decimal(14, 4)
   formaPago       FormaPago? @map("forma_pago")
   nota            String?
+  /// Datos específicos según el tipo de labor:
+  ///  - siembra: densidad (sem/ha), espaciamiento, profundidad
+  ///  - pulverización/fertilización: producto, dosis, viento, temperatura
+  ///  - cosecha: humedad, merma
+  /// Schema flexible para no inflar la tabla con columnas que sólo
+  /// aplican a un subconjunto.
+  datos           Json?
+  /// Para siembra: densidad sembrada en sem/ha. Lo dejamos como columna
+  /// porque es lo que más se va a buscar / filtrar.
+  densidadSemHa   Decimal?   @map("densidad_sem_ha") @db.Decimal(12, 4)
+  /// Para siembra: la variedad usada en esta labor (puede diferir del
+  /// LoteCampania.variedadId si se resembraron sectores).
+  variedadId      String?    @map("variedad_id")
   activo          Boolean    @default(true)
   createdAt       DateTime   @default(now()) @map("created_at")
   updatedAt       DateTime   @updatedAt @map("updated_at")
 
   loteCampania    LoteCampania @relation(fields: [loteCampaniaId], references: [id])
+  variedad        Variedad?    @relation(fields: [variedadId], references: [id])
 
   @@index([cuentaId])
   @@index([loteCampaniaId])
+  @@index([variedadId])
   @@map("labores")
 }
 

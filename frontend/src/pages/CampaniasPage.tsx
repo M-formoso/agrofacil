@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Pencil, Trash2, CalendarRange, Loader2, ChevronRight, Snowflake, Sun } from 'lucide-react';
+import { Plus, Pencil, Trash2, CalendarRange, Loader2, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -15,13 +15,11 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { campaniasService } from '@/services/campaniasService';
 import { extraerMensajeError } from '@/lib/apiClient';
 import { formatearFecha } from '@/utils/formatters';
-import { cn } from '@/lib/utils';
-import type { Campania, TipoCampania } from '@/types/agro';
+import type { Campania } from '@/types/agro';
 
 const schema = z
   .object({
     nombre: z.string().min(1, 'Requerido'),
-    tipo: z.enum(['fina', 'gruesa']),
     fechaInicio: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato YYYY-MM-DD'),
     fechaFin: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato YYYY-MM-DD').optional().or(z.literal('')),
   })
@@ -94,30 +92,15 @@ export function CampaniasPage() {
                   to={`/campanias/${c.id}`}
                   className="group block rounded-xl bg-surface border border-border hover:border-primary/40 hover:shadow-lift transition relative overflow-hidden"
                 >
-                  {/* Strip izquierdo según tipo */}
-                  <div className={cn(
-                    'absolute left-0 top-0 bottom-0 w-1.5',
-                    c.tipo === 'fina' ? 'bg-info' : 'bg-warning',
-                  )} />
+                  <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-primary" />
 
                   <div className="pl-5 pr-4 py-4 flex items-center gap-4">
-                    <div className={cn(
-                      'h-12 w-12 rounded-xl flex items-center justify-center shrink-0',
-                      c.tipo === 'fina' ? 'bg-info/10 text-info' : 'bg-warning/10 text-warning',
-                    )}>
-                      {c.tipo === 'fina' ? <Snowflake className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+                    <div className="h-12 w-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                      <CalendarRange className="h-5 w-5" />
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-foreground truncate">{c.nombre}</h3>
-                        <span className={cn(
-                          'text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded font-semibold',
-                          c.tipo === 'fina' ? 'bg-info/10 text-info' : 'bg-warning/10 text-warning',
-                        )}>
-                          {c.tipo}
-                        </span>
-                      </div>
+                      <h3 className="font-semibold text-foreground truncate">{c.nombre}</h3>
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {formatearFecha(c.fechaInicio)}{c.fechaFin ? ` → ${formatearFecha(c.fechaFin)}` : ''}
                         {' · '}
@@ -177,25 +160,21 @@ function CampaniaSheet({
   const qc = useQueryClient();
   const isEdit = !!editing;
 
-  const { register, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
     values: editing
       ? {
           nombre: editing.nombre,
-          tipo: editing.tipo,
           fechaInicio: editing.fechaInicio.slice(0, 10),
           fechaFin: editing.fechaFin?.slice(0, 10) ?? '',
         }
-      : { nombre: '', tipo: 'gruesa', fechaInicio: '', fechaFin: '' },
+      : { nombre: '', fechaInicio: '', fechaFin: '' },
   });
-
-  const tipo = watch('tipo');
 
   const mutation = useMutation({
     mutationFn: (data: FormData) => {
-      const payload: { nombre: string; tipo: TipoCampania; fechaInicio: string; fechaFin?: string } = {
+      const payload: { nombre: string; fechaInicio: string; fechaFin?: string } = {
         nombre: data.nombre,
-        tipo: data.tipo,
         fechaInicio: data.fechaInicio,
       };
       if (data.fechaFin) payload.fechaFin = data.fechaFin;
@@ -223,30 +202,10 @@ function CampaniaSheet({
           {errors.nombre && <p className="text-xs text-destructive">{errors.nombre.message}</p>}
         </div>
 
-        <div className="space-y-2">
-          <Label>Tipo de campaña</Label>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => setValue('tipo', 'fina', { shouldValidate: true })}
-              className={cn(
-                'h-14 rounded-lg border flex items-center justify-center gap-2 font-medium transition',
-                tipo === 'fina' ? 'border-info bg-info/10 text-info' : 'border-border bg-surface hover:border-info/40',
-              )}
-            >
-              <Snowflake className="h-4 w-4" /> Fina
-            </button>
-            <button
-              type="button"
-              onClick={() => setValue('tipo', 'gruesa', { shouldValidate: true })}
-              className={cn(
-                'h-14 rounded-lg border flex items-center justify-center gap-2 font-medium transition',
-                tipo === 'gruesa' ? 'border-warning bg-warning/10 text-warning' : 'border-border bg-surface hover:border-warning/40',
-              )}
-            >
-              <Sun className="h-4 w-4" /> Gruesa
-            </button>
-          </div>
+        <div className="rounded-lg border border-border bg-muted/40 p-3 text-xs text-muted-foreground leading-relaxed">
+          El ciclo (fina o gruesa) se elige <strong>por lote</strong> al
+          asignarle un cultivo a esta campaña, porque en una misma campaña
+          pueden convivir cultivos de invierno y de verano en distintos lotes.
         </div>
 
         <div className="grid grid-cols-2 gap-3">

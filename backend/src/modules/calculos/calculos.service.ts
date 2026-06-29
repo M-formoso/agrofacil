@@ -186,8 +186,13 @@ export class CalculosService {
       ? new Decimal(0)
       : ingresoUsd(rinde, superficieHa, precioUsdQq);
 
-    // === Arrendamiento ===
-    const costoArrendamiento = this.calcularArrendamiento({
+    // === Arrendamiento (prorrateado por tiempo de uso) ===
+    // El arrendamiento es ANUAL. Si el lote-campaña tiene fechas de siembra
+    // y cosecha, sólo le imputamos la fracción del año que el cultivo ocupó
+    // el lote. Esto evita que un cultivo de invierno y uno de verano dupliquen
+    // el costo de alquiler del mismo lote.
+    const fraccionAnual = this.calcularFraccionAnualUso(lc);
+    const arrendamientoBase = this.calcularArrendamiento({
       tenencia: lc.lote.tenencia,
       unidad: lc.lote.arrendamientoUnidad,
       valor: lc.lote.arrendamientoValor,
@@ -195,6 +200,7 @@ export class CalculosService {
       precioUsdQq,
       ingresoBruto,
     });
+    const costoArrendamiento = arrendamientoBase.times(fraccionAnual);
 
     // === Totales ===
     const otrosGastos = new Decimal(0); // placeholder para futuro
@@ -315,6 +321,23 @@ export class CalculosService {
     }
   }
 
+  /**
+   * Devuelve la fracción del año (0..1) que el cultivo ocupó el lote. Si no
+   * hay fechas, devuelve 1 (compatibilidad: imputa el arrendamiento entero).
+   * Mínimo 0.1 para evitar cultivos con menos de ~1 mes que harían el
+   * arrendamiento casi nulo y los márgenes irreales.
+   */
+  private calcularFraccionAnualUso(lc: LoteCampaniaConRelaciones): Decimal {
+    if (!lc.fechaSiembra) return new Decimal(1);
+    const fin = lc.fechaCosecha ?? new Date();
+    const inicio = lc.fechaSiembra;
+    const ms = fin.getTime() - inicio.getTime();
+    if (ms <= 0) return new Decimal(1);
+    const dias = ms / (1000 * 60 * 60 * 24);
+    const fraccion = Math.max(0.1, Math.min(1, dias / 365));
+    return new Decimal(fraccion.toFixed(4));
+  }
+
   private armarLecturaPuntoEq(rinde: Decimal, equilibrio: Decimal): string {
     const e = equilibrio.toFixed(1);
     const r = rinde.toFixed(1);
@@ -335,6 +358,10 @@ export interface LoteCampaniaConRelaciones {
   precioGranoUsdTn: { toString: () => string } | null;
   rindeRealQqHa: { toString: () => string } | null;
   rindeEstimadoQqHa: { toString: () => string } | null;
+  /** Fechas de siembra/cosecha. Si están, el arrendamiento se prorratea
+   * por la fracción del año que el cultivo ocupó el lote. */
+  fechaSiembra: Date | null;
+  fechaCosecha: Date | null;
   lote: {
     nombre: string;
     tenencia: 'propio' | 'arrendado' | 'mixto' | null;

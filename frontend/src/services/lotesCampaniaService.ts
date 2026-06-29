@@ -1,11 +1,13 @@
 import { apiClient } from '@/lib/apiClient';
 import { getList } from './_apiHelpers';
-import type { LoteCampania } from '@/types/agro';
+import type { LoteCampania, TipoCampania } from '@/types/agro';
 
 export interface CrearLoteCampaniaData {
   loteId: string;
   campaniaId: string;
   cultivoId: string;
+  variedadId?: string | null;
+  tipo?: TipoCampania | null;
   superficieSembradaHa: number;
   fechaSiembra?: string;
   rindeEstimadoQqHa?: number;
@@ -13,6 +15,8 @@ export interface CrearLoteCampaniaData {
 }
 export interface ActualizarLoteCampaniaData {
   cultivoId?: string;
+  variedadId?: string | null;
+  tipo?: TipoCampania | null;
   superficieSembradaHa?: number;
   fechaSiembra?: string | null;
   rindeEstimadoQqHa?: number | null;

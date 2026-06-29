@@ -8,6 +8,8 @@ export type Ejecutor = 'propio' | 'contratista';
 export type FormaPago = 'contado' | 'canje' | 'financiado';
 export type TipoInsumo = 'semilla' | 'fertilizante' | 'herbicida' | 'insecticida' | 'fungicida' | 'otro';
 
+export type CapacidadUso = 'I' | 'II' | 'III' | 'IV' | 'V' | 'VI' | 'VII' | 'VIII' | 'desconocida';
+
 export interface Establecimiento {
   id: string;
   cuentaId: string;
@@ -19,6 +21,8 @@ export interface Establecimiento {
   arrendamientoValor: string | null;
   arrendamientoUnidad: UnidadArrendamiento | null;
   superficieTotalHa: string | null;
+  /** Clase agrológica (capacidad de uso del suelo). */
+  capacidadUso: CapacidadUso | null;
   activo: boolean;
   createdAt: string;
   updatedAt: string;
@@ -49,7 +53,7 @@ export interface Lote {
     precioGranoUsdTn: string | null;
     fechaCosecha: string | null;
     createdAt: string;
-    campania: { id: string; nombre: string; tipo: TipoCampania; fechaInicio: string; fechaFin: string };
+    campania: { id: string; nombre: string; tipo: TipoCampania | null; fechaInicio: string; fechaFin: string };
     cultivo: { id: string; nombre: string };
     variedad: { id: string; nombre: string } | null;
   }>;
@@ -59,7 +63,8 @@ export interface Campania {
   id: string;
   cuentaId: string;
   nombre: string;
-  tipo: TipoCampania;
+  /** LEGACY: el tipo (fina/gruesa) ahora vive en LoteCampania. */
+  tipo: TipoCampania | null;
   fechaInicio: string;
   fechaFin: string | null;
   activo: boolean;
@@ -91,6 +96,9 @@ export interface LoteCampania {
   loteId: string;
   campaniaId: string;
   cultivoId: string;
+  /** Ciclo del cultivo en este lote (fina/gruesa). Vive acá y no en
+   * Campania porque una misma campaña puede tener cultivos de ambos. */
+  tipo: TipoCampania | null;
   superficieSembradaHa: string;
   fechaSiembra: string | null;
   rindeEstimadoQqHa: string | null;
@@ -117,6 +125,13 @@ export interface Labor {
   costoTotalUsd: string | null;
   formaPago: FormaPago | null;
   nota: string | null;
+  /** Para siembra: densidad en sem/ha. */
+  densidadSemHa: string | null;
+  /** Para siembra: variedad usada. */
+  variedadId: string | null;
+  variedad?: { id: string; nombre: string } | null;
+  /** Datos específicos por tipo: producto, dosis, viento, etc. */
+  datos: Record<string, unknown> | null;
   activo: boolean;
   createdAt: string;
   updatedAt: string;

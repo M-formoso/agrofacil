@@ -1,10 +1,9 @@
 import { apiClient } from '@/lib/apiClient';
 import { getList } from './_apiHelpers';
-import type { Campania, TipoCampania } from '@/types/agro';
+import type { Campania } from '@/types/agro';
 
 export interface CrearCampaniaData {
   nombre: string;
-  tipo: TipoCampania;
   fechaInicio: string;       // YYYY-MM-DD
   fechaFin?: string;
 }

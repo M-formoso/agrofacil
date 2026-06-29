@@ -1,19 +1,22 @@
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import {
-  ArrowLeft, ChevronRight, History, Sprout, Tractor, Wheat,
+  ArrowLeft, ChevronRight, History, Scissors, Sprout, Tractor, Wheat,
 } from 'lucide-react';
 
 import { lotesService } from '@/services/lotesService';
 import { formatearFecha, formatearHa, formatearQqHa, formatearUsd } from '@/utils/formatters';
 import { MonitoreosPanel } from '@/components/monitoreos/MonitoreosPanel';
+import { DividirLoteSheet } from '@/components/lotes/DividirLoteSheet';
 import { useAuthStore } from '@/stores/authStore';
 import { cn } from '@/lib/utils';
 
 export function LoteDetallePage() {
   const { id } = useParams<{ id: string }>();
   const rolEnCuenta = useAuthStore((s) => s.usuario?.rolEnCuentaActiva);
+  const [dividiendo, setDividiendo] = useState(false);
 
   const { data: lote, isLoading } = useQuery({
     queryKey: ['lote', id],
@@ -52,22 +55,43 @@ export function LoteDetallePage() {
           <Sprout className="w-32 h-32" />
         </div>
         <div className="relative">
-          {lote.establecimiento && (
-            <p className="text-[11px] uppercase tracking-widest text-white/75 font-medium flex items-center gap-1">
-              <Tractor className="h-3 w-3" /> {lote.establecimiento.nombre}
-            </p>
-          )}
-          <h1 className="text-2xl lg:text-4xl font-bold tracking-tight mt-1">{lote.nombre}</h1>
-          <p className="text-sm text-white/85 mt-2 flex items-center gap-2 flex-wrap">
-            <span className="tabular-nums">{formatearHa(lote.superficieHa)}</span>
-            {lote.tenencia && (
-              <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded bg-white/15">
-                {lote.tenencia}
-              </span>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              {lote.establecimiento && (
+                <p className="text-[11px] uppercase tracking-widest text-white/75 font-medium flex items-center gap-1">
+                  <Tractor className="h-3 w-3" /> {lote.establecimiento.nombre}
+                </p>
+              )}
+              <h1 className="text-2xl lg:text-4xl font-bold tracking-tight mt-1">{lote.nombre}</h1>
+              <p className="text-sm text-white/85 mt-2 flex items-center gap-2 flex-wrap">
+                <span className="tabular-nums">{formatearHa(lote.superficieHa)}</span>
+                {lote.tenencia && (
+                  <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded bg-white/15">
+                    {lote.tenencia}
+                  </span>
+                )}
+              </p>
+            </div>
+            {(rolEnCuenta === 'ingeniero' || rolEnCuenta === 'operador') && (
+              <button
+                onClick={() => setDividiendo(true)}
+                className="h-9 px-3 rounded-md bg-white/15 hover:bg-white/25 text-white text-xs font-medium inline-flex items-center gap-1.5 backdrop-blur-sm transition shrink-0"
+              >
+                <Scissors className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Dividir lote</span>
+              </button>
             )}
-          </p>
+          </div>
         </div>
       </header>
+
+      <DividirLoteSheet
+        open={dividiendo}
+        loteId={lote.id}
+        loteNombre={lote.nombre}
+        superficieHa={Number(lote.superficieHa)}
+        onClose={() => setDividiendo(false)}
+      />
 
       {/* Bloque arrendamiento + principal: si hay ambos se dividen 4/8; si hay solo uno ocupa todo. */}
       <div className="grid grid-cols-12 gap-4 lg:gap-6">

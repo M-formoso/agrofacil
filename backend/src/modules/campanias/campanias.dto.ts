@@ -8,7 +8,8 @@ const fechaIso = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato YYYY-MM-DD');
 export const crearCampaniaSchema = z
   .object({
     nombre: z.string().trim().min(1, 'El nombre es requerido'),
-    tipo: tipoCampaniaSchema,
+    /** LEGACY: opcional. Hoy el ciclo vive a nivel LoteCampania. */
+    tipo: tipoCampaniaSchema.optional(),
     fechaInicio: fechaIso,
     fechaFin: fechaIso.optional(),
   })

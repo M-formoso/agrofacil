@@ -480,6 +480,11 @@ const laborSchema = z.object({
   costoTotalUsd: z.coerce.number().nonnegative().optional(),
   formaPago: z.enum(['contado', 'canje', 'financiado']).optional(),
   nota: z.string().optional(),
+  // Datos específicos por tipo de labor
+  densidadSemHa: z.coerce.number().positive().optional(),
+  variedadId: z.string().uuid().optional().or(z.literal('')),
+  producto: z.string().optional(),
+  dosis: z.string().optional(),
 });
 type LaborFormInput = z.input<typeof laborSchema>;
 type LaborForm = z.output<typeof laborSchema>;
@@ -495,6 +500,17 @@ function LaborSheet({ open, loteCampaniaId, onClose }: { open: boolean; loteCamp
   const ejecutor = watch('ejecutor');
   const formaPago = watch('formaPago');
 
+  // Datos específicos según el tipo de labor (se mandan al backend dentro de `datos`).
+  const datosEspecificos = (data: LaborForm): Record<string, unknown> | undefined => {
+    if (data.tipo === 'pulverizacion' || data.tipo === 'fertilizacion') {
+      const d: Record<string, unknown> = {};
+      if (data.producto) d.producto = data.producto;
+      if (data.dosis) d.dosis = data.dosis;
+      return Object.keys(d).length ? d : undefined;
+    }
+    return undefined;
+  };
+
   const mutation = useMutation({
     mutationFn: (data: LaborForm) =>
       laboresService.crear({
@@ -505,6 +521,9 @@ function LaborSheet({ open, loteCampaniaId, onClose }: { open: boolean; loteCamp
         ...(data.costoTotalUsd !== undefined ? { costoTotalUsd: data.costoTotalUsd } : {}),
         ...(data.formaPago ? { formaPago: data.formaPago } : {}),
         ...(data.nota ? { nota: data.nota } : {}),
+        ...(data.tipo === 'siembra' && data.densidadSemHa ? { densidadSemHa: data.densidadSemHa } : {}),
+        ...(data.tipo === 'siembra' && data.variedadId ? { variedadId: data.variedadId } : {}),
+        ...(datosEspecificos(data) ? { datos: datosEspecificos(data) } : {}),
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['lote-campania', loteCampaniaId] });
@@ -589,6 +608,47 @@ function LaborSheet({ open, loteCampaniaId, onClose }: { open: boolean; loteCamp
             </div>
           </div>
         </div>
+
+        {/* Datos específicos según tipo */}
+        {tipo === 'siembra' && (
+          <div className="rounded-lg border border-info/30 bg-info/5 p-3 space-y-3">
+            <p className="text-[10px] uppercase tracking-wider font-semibold text-info">
+              Datos de la siembra
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="dens">Densidad (sem/ha)</Label>
+                <Input id="dens" type="number" step="100" min="0" placeholder="250000"
+                  {...register('densidadSemHa', { setValueAs: (v) => v === '' ? undefined : Number(v) })} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lvar">Variedad/híbrido</Label>
+                <Input id="lvar" placeholder="(opcional, UUID si tenés catálogo)" {...register('variedadId')} />
+                <p className="text-[10px] text-muted-foreground">
+                  Si la cargás en Cultivos, podés referenciarla acá.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {(tipo === 'pulverizacion' || tipo === 'fertilizacion') && (
+          <div className="rounded-lg border border-warning/30 bg-warning/5 p-3 space-y-3">
+            <p className="text-[10px] uppercase tracking-wider font-semibold text-warning">
+              Datos de la aplicación
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="lprod">Producto</Label>
+                <Input id="lprod" placeholder="Ej: Glifosato 48%" {...register('producto')} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="ldos">Dosis</Label>
+                <Input id="ldos" placeholder="Ej: 3 lt/ha" {...register('dosis')} />
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="space-y-2">
           <Label htmlFor="ln">Nota</Label>

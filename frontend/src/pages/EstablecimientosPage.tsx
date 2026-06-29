@@ -29,6 +29,7 @@ const schema = z
     arrendamientoValor: z.coerce.number().nonnegative().optional().nullable(),
     arrendamientoUnidad: z.enum(['qq_ha', 'usd_ha', 'pct_produccion']).optional().nullable(),
     superficieTotalHa: z.coerce.number().nonnegative().optional(),
+    capacidadUso: z.enum(['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'desconocida']).optional().nullable(),
   })
   .superRefine((d, ctx) => {
     if (d.tenencia === 'arrendado' || d.tenencia === 'mixto') {
@@ -222,12 +223,14 @@ function EstablecimientoSheet({
           arrendamientoValor: editing.arrendamientoValor ? Number(editing.arrendamientoValor) : undefined,
           arrendamientoUnidad: editing.arrendamientoUnidad ?? undefined,
           superficieTotalHa: editing.superficieTotalHa ? Number(editing.superficieTotalHa) : undefined,
+          capacidadUso: editing.capacidadUso ?? undefined,
         }
       : {
           nombre: '', ubicacion: '', tenencia: 'propio',
           latitud: undefined, longitud: undefined,
           arrendamientoValor: undefined, arrendamientoUnidad: undefined,
           superficieTotalHa: undefined,
+          capacidadUso: undefined,
         },
   });
 
@@ -314,19 +317,43 @@ function EstablecimientoSheet({
           </div>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="superficieTotalHa">Superficie total (ha)</Label>
-          <Input
-            id="superficieTotalHa"
-            type="number"
-            step="0.01"
-            min="0"
-            placeholder="Ej: 250"
-            {...register('superficieTotalHa', { setValueAs: (v) => (v === '' ? undefined : Number(v)) })}
-          />
-          <p className="text-[11px] text-muted-foreground">
-            Informativa. La superficie real surge de la suma de los lotes que cargues.
-          </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <Label htmlFor="superficieTotalHa">Superficie total (ha)</Label>
+            <Input
+              id="superficieTotalHa"
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="Ej: 250"
+              {...register('superficieTotalHa', { setValueAs: (v) => (v === '' ? undefined : Number(v)) })}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Informativa. La superficie real surge de la suma de los lotes.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="capacidadUso">Capacidad de uso del suelo</Label>
+            <select
+              id="capacidadUso"
+              className="w-full h-10 px-3 rounded-md border border-border bg-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              {...register('capacidadUso')}
+            >
+              <option value="">— Sin definir —</option>
+              <option value="I">Clase I — agricultura sin restricciones</option>
+              <option value="II">Clase II — restricciones leves</option>
+              <option value="III">Clase III — restricciones moderadas</option>
+              <option value="IV">Clase IV — restricciones severas</option>
+              <option value="V">Clase V — ganadería intensiva</option>
+              <option value="VI">Clase VI — ganadería con manejo</option>
+              <option value="VII">Clase VII — uso forestal/protección</option>
+              <option value="VIII">Clase VIII — sólo conservación</option>
+              <option value="desconocida">Desconocida</option>
+            </select>
+            <p className="text-[11px] text-muted-foreground">
+              Clase agrológica (capacidad de uso del INTA).
+            </p>
+          </div>
         </div>
 
         {/* Solapa de arrendamiento (solo si tenencia=arrendado o mixto) */}
