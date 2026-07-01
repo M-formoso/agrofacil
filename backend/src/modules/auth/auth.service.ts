@@ -77,8 +77,10 @@ export class AuthService {
   }
 
   /// Genera un par de tokens "modo impersonación" para un superadmin sobre una cuenta target.
-  /// Sólo se invoca desde el AdminController con SuperAdminGuard, así que confiamos en que
-  /// el usuario es superadmin — igual chequeamos por defensa.
+  /// El superadmin pasa a ver el sistema EXACTAMENTE como lo ve el ingeniero principal
+  /// de esa cuenta — su nombre, email, rol global, módulos permitidos, todo. Solo el id
+  /// del JWT sigue siendo el superadmin (para que el audit trail sepa que fue una
+  /// impersonación, no el cliente actuando).
   async impersonar(superadminId: string, cuentaTargetId: string): Promise<TokensResponse> {
     const superadmin = await this.prisma.usuario.findFirst({
       where: { id: superadminId, activo: true, rolGlobal: 'superadmin' },
@@ -90,6 +92,11 @@ export class AuthService {
       select: { id: true, nombre: true },
     });
     if (!cuenta) throw new UnauthorizedException('Cuenta no encontrada o inactiva');
+
+    // Buscamos un ingeniero de esa cuenta para "tomar prestada" su identidad.
+    // Si no hay ingeniero, cualquier miembro activo sirve. Si no hay ninguno → error.
+    const proxy = await this.elegirUsuarioProxyDeLaCuenta(cuenta.id);
+    if (!proxy) throw new UnauthorizedException('La cuenta no tiene miembros activos para impersonar');
 
     const accessExpiresIn = (this.config.get<string>('jwt.accessExpiresIn') ?? '30m') as `${number}${'s' | 'm' | 'h' | 'd'}`;
     const refreshExpiresIn = (this.config.get<string>('jwt.refreshExpiresIn') ?? '7d') as `${number}${'s' | 'm' | 'h' | 'd'}`;
@@ -103,18 +110,34 @@ export class AuthService {
     const refreshToken = await this.jwt.signAsync(payload, { expiresIn: refreshExpiresIn });
 
     const usuarioActual: UsuarioActual = {
-      id: superadmin.id,
-      email: superadmin.email,
-      nombre: superadmin.nombre,
-      rolGlobal: superadmin.rolGlobal,
+      id: superadmin.id, // se mantiene el superadmin para audit
+      email: proxy.usuario.email,
+      nombre: proxy.usuario.nombre,
+      rolGlobal: proxy.usuario.rolGlobal, // ej. 'ingeniero' → no entra a /admin
       cuentaId: cuenta.id,
-      rolEnCuentaActiva: 'ingeniero',
-      modulosPermitidos: [],
-      membresias: [],
+      rolEnCuentaActiva: proxy.rol,
+      modulosPermitidos: proxy.modulosPermitidos,
+      membresias: [{ cuentaId: cuenta.id, cuentaNombre: cuenta.nombre, rol: proxy.rol }],
       impersonating: true,
       impersonatingCuentaNombre: cuenta.nombre,
     };
     return { accessToken, refreshToken, usuario: usuarioActual };
+  }
+
+  /// Elige el "usuario proxy" para impersonar una cuenta: prefiere el primer ingeniero
+  /// activo (orden de creación), o cualquier miembro activo si no hay ingenieros.
+  async elegirUsuarioProxyDeLaCuenta(cuentaId: string) {
+    const ingeniero = await this.prisma.usuarioCuenta.findFirst({
+      where: { cuentaId, activo: true, rol: 'ingeniero', usuario: { activo: true } },
+      orderBy: { createdAt: 'asc' },
+      include: { usuario: { select: { email: true, nombre: true, rolGlobal: true } } },
+    });
+    if (ingeniero) return ingeniero;
+    return this.prisma.usuarioCuenta.findFirst({
+      where: { cuentaId, activo: true, usuario: { activo: true } },
+      orderBy: { createdAt: 'asc' },
+      include: { usuario: { select: { email: true, nombre: true, rolGlobal: true } } },
+    });
   }
 
   async switchCuenta(usuarioId: string, nuevaCuentaId: string): Promise<TokensResponse> {

@@ -8,7 +8,10 @@ async function bootstrap(): Promise<void> {
   app.useLogger(app.get(Logger));
 
   const config = app.get(ConfigService);
-  const origin = config.get<string>('corsOrigin') ?? 'http://localhost:5173';
+  // CORS_ORIGIN puede ser una sola URL o varias separadas por coma —
+  // así soportamos la URL de Railway y el dominio propio en simultáneo.
+  const corsRaw = config.get<string>('corsOrigin') ?? 'http://localhost:5173';
+  const origin = corsRaw.split(',').map((s) => s.trim()).filter(Boolean);
   app.enableCors({ origin, credentials: true });
 
   app.setGlobalPrefix('api/v1');

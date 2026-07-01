@@ -1,9 +1,10 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, forwardRef, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { UsuarioActual } from '../../common/types/usuario-actual';
+import { AuthService } from './auth.service';
 
 interface JwtPayload {
   sub: string;             // user id
@@ -18,6 +19,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
     config: ConfigService,
     private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => AuthService)) private readonly auth: AuthService,
   ) {
     const secret = config.get<string>('jwt.secret');
     if (!secret) throw new Error('JWT_SECRET no configurado');
@@ -41,6 +43,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (!usuario) throw new UnauthorizedException('Usuario no encontrado o inactivo');
 
     // --- Modo impersonación: solo válido para superadmins.
+    // El UsuarioActual devuelto refleja al "usuario proxy" de la cuenta target
+    // (su nombre, email, rol, módulos) — así el panel del cliente se ve idéntico
+    // a como lo ve el cliente real. El JWT.sub queda como superadmin para audit.
     if (payload.impersonating) {
       if (usuario.rolGlobal !== 'superadmin') {
         throw new UnauthorizedException('Impersonación no permitida');
@@ -51,19 +56,18 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       });
       if (!cuentaTarget) throw new UnauthorizedException('Cuenta a impersonar no encontrada');
 
+      const proxy = await this.auth.elegirUsuarioProxyDeLaCuenta(cuentaTarget.id);
+      if (!proxy) throw new UnauthorizedException('La cuenta a impersonar no tiene miembros activos');
+
       return {
-        id: usuario.id,
-        email: usuario.email,
-        nombre: usuario.nombre,
-        rolGlobal: usuario.rolGlobal,
+        id: usuario.id, // superadmin — para audit
+        email: proxy.usuario.email,
+        nombre: proxy.usuario.nombre,
+        rolGlobal: proxy.usuario.rolGlobal,
         cuentaId: cuentaTarget.id,
-        rolEnCuentaActiva: 'ingeniero',
-        modulosPermitidos: [],
-        membresias: usuario.membresias.map((m) => ({
-          cuentaId: m.cuentaId,
-          cuentaNombre: m.cuenta.nombre,
-          rol: m.rol,
-        })),
+        rolEnCuentaActiva: proxy.rol,
+        modulosPermitidos: proxy.modulosPermitidos,
+        membresias: [{ cuentaId: cuentaTarget.id, cuentaNombre: cuentaTarget.nombre, rol: proxy.rol }],
         impersonating: true,
         impersonatingCuentaNombre: cuentaTarget.nombre,
       };

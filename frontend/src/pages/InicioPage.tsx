@@ -86,11 +86,13 @@ export function InicioPage() {
     <div className="flex-1 flex flex-col space-y-6 max-w-7xl w-full mx-auto">
       {/* Greeting */}
       <motion.div {...item(0)} className="flex items-center justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <p className="text-sm text-muted-foreground">Hola, {usuario?.nombre?.split(' ')[0]} 👋</p>
-          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">Tu vivero</h1>
+          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight truncate">
+            {usuario?.membresias?.find((m) => m.cuentaId === usuario.cuentaId)?.cuentaNombre ?? 'Tu campo'}
+          </h1>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <AlertasBadge variant="dark" />
           <Logo size={36} animated />
         </div>

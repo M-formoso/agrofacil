@@ -98,9 +98,12 @@ export function useOfflineSync() {
                 (descartadas > 0 ? ` · ${descartadas} con error` : ''),
             );
           } else if (descartadas > 0) {
-            toast.error(`${descartadas} registro${descartadas === 1 ? '' : 's'} con error de validación`);
+            toast.error(`${descartadas} registro${descartadas === 1 ? '' : 's'} con error — verificá los datos`);
           } else if (ops.length > 0 && quedaron === ops.length) {
-            toast.error('No se pudo conectar — reintentamos después');
+            toast(
+              `Señal débil. Tus ${quedaron} registro${quedaron === 1 ? ' está guardado' : 's están guardados'} y se ${quedaron === 1 ? 'sube' : 'suben'} solo${quedaron === 1 ? '' : 's'} cuando vuelva la señal.`,
+              { duration: 5000 },
+            );
           }
         }
 
@@ -133,6 +136,24 @@ export function useOfflineSync() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // --- auto-retry periódico silencioso mientras haya pendientes y red ---
+  // Reintenta cada 60s. Si el server sigue caído, no muestra error — solo lo vuelve a intentar.
+  useEffect(() => {
+    if (!online || pendientes.length === 0) return;
+    const id = setInterval(() => {
+      if (offlineQueue.size() > 0) {
+        drenar(true).catch(() => undefined);
+      }
+    }, 60_000);
+    return () => clearInterval(id);
+  }, [online, pendientes.length, drenar]);
+
+  /** Vacía la cola entera (después de pedir confirmación al usuario). */
+  const descartarTodo = useCallback(() => {
+    offlineQueue.clear();
+    setPendientes([]);
+  }, []);
+
   return {
     online,
     pendientes,
@@ -140,5 +161,7 @@ export function useOfflineSync() {
     sincronizando,
     /** Forzar sincronización manual (botón "Sincronizar ahora"). */
     sincronizarAhora: () => drenar(false),
+    /** Vaciar la cola entera (operaciones que no se van a poder enviar). */
+    descartarTodo,
   };
 }

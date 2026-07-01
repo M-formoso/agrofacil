@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { CloudOff, RefreshCw, Loader2, CheckCheck } from 'lucide-react';
+import { CloudOff, RefreshCw, Loader2, CheckCheck, Trash2 } from 'lucide-react';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { cn } from '@/lib/utils';
 
@@ -12,9 +12,11 @@ import { cn } from '@/lib/utils';
  * Muestra contador de pendientes y botón "Sincronizar" cuando hay red.
  */
 export function OfflineIndicator() {
-  const { online, cantidadPendientes, sincronizando, sincronizarAhora } = useOfflineSync();
+  const { online, cantidadPendientes, sincronizando, sincronizarAhora, descartarTodo, pendientes } = useOfflineSync();
 
   const mostrar = !online || cantidadPendientes > 0;
+  // Operaciones "trabadas" — se intentaron muchas veces y no van. Sólo entonces ofrecemos descartar.
+  const hayTrabadas = pendientes.some((p) => p.intentos >= 3);
 
   return (
     <AnimatePresence>
@@ -55,30 +57,49 @@ export function OfflineIndicator() {
                   <p className="font-semibold text-sm">Sin conexión</p>
                   <p className="text-xs opacity-85">
                     {cantidadPendientes > 0
-                      ? `${cantidadPendientes} registro${cantidadPendientes === 1 ? '' : 's'} esperando subir.`
-                      : 'Lo que cargues ahora se sincronizará al volver la señal.'}
+                      ? `${cantidadPendientes} guardado${cantidadPendientes === 1 ? '' : 's'} — se ${cantidadPendientes === 1 ? 'sube' : 'suben'} solo${cantidadPendientes === 1 ? '' : 's'} al volver la señal.`
+                      : 'Lo que cargues ahora se guarda y sincroniza al volver la señal.'}
                   </p>
                 </>
               ) : (
                 <>
                   <p className="font-semibold text-sm text-foreground">
-                    {cantidadPendientes} pendiente{cantidadPendientes === 1 ? '' : 's'}
+                    {cantidadPendientes} {cantidadPendientes === 1 ? 'pendiente' : 'pendientes'}
                   </p>
                   <p className="text-xs text-muted-foreground truncate">
-                    {sincronizando ? 'Sincronizando…' : 'Tocá para enviar al servidor.'}
+                    {sincronizando
+                      ? 'Sincronizando…'
+                      : hayTrabadas
+                      ? 'No se pudieron enviar. Reintentá o descartá.'
+                      : 'Se sincronizan solos. Tocá para forzar.'}
                   </p>
                 </>
               )}
             </div>
 
             {online && cantidadPendientes > 0 && (
-              <button
-                onClick={() => sincronizarAhora()}
-                disabled={sincronizando}
-                className="shrink-0 px-3 h-9 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary-hover transition disabled:opacity-50"
-              >
-                Sincronizar
-              </button>
+              <div className="flex items-center gap-1.5 shrink-0">
+                {hayTrabadas && (
+                  <button
+                    onClick={() => {
+                      if (confirm(`¿Descartar los ${cantidadPendientes} registros pendientes? No se van a subir al servidor.`)) {
+                        descartarTodo();
+                      }
+                    }}
+                    title="Descartar pendientes"
+                    className="px-2 h-9 rounded-md bg-muted text-muted-foreground text-xs font-medium hover:bg-destructive/10 hover:text-destructive transition inline-flex items-center gap-1"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                )}
+                <button
+                  onClick={() => sincronizarAhora()}
+                  disabled={sincronizando}
+                  className="px-3 h-9 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary-hover transition disabled:opacity-50"
+                >
+                  Sincronizar
+                </button>
+              </div>
             )}
           </div>
         </motion.div>
