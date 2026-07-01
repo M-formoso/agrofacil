@@ -154,6 +154,47 @@ export function useOfflineSync() {
     setPendientes([]);
   }, []);
 
+  /** Descarta un op específico por id (sin intentar enviarlo). */
+  const descartarUno = useCallback((id: string) => {
+    offlineQueue.remove(id);
+    setPendientes(offlineQueue.list());
+  }, []);
+
+  /** Reintenta un op específico. Devuelve 'ok' | 'error' | 'sin-red'. */
+  const reintentarUno = useCallback(async (id: string): Promise<'ok' | 'error' | 'sin-red'> => {
+    const op = offlineQueue.list().find((o) => o.id === id);
+    if (!op) return 'error';
+    if (!navigator.onLine) return 'sin-red';
+    const token = useAuthStore.getState().accessToken;
+    try {
+      await axios.request({
+        baseURL,
+        url: op.url,
+        method: op.method,
+        data: op.body,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          'X-Offline-Drain': '1',
+        },
+        timeout: 15000,
+      });
+      offlineQueue.remove(op.id);
+      setPendientes(offlineQueue.list());
+      qc.invalidateQueries();
+      return 'ok';
+    } catch (err) {
+      const status = axios.isAxiosError(err) ? err.response?.status : undefined;
+      offlineQueue.marcarIntento(op.id);
+      setPendientes(offlineQueue.list());
+      if (status && status >= 400 && status < 500 && status !== 401) {
+        // 4xx no-recoverable — el server rechazó el dato. Lo dejamos igual para que el usuario decida descartarlo.
+        return 'error';
+      }
+      return 'error';
+    }
+  }, [qc]);
+
   return {
     online,
     pendientes,
@@ -163,5 +204,9 @@ export function useOfflineSync() {
     sincronizarAhora: () => drenar(false),
     /** Vaciar la cola entera (operaciones que no se van a poder enviar). */
     descartarTodo,
+    /** Descartar una operación específica por id. */
+    descartarUno,
+    /** Reintentar el envío de una sola operación. */
+    reintentarUno,
   };
 }

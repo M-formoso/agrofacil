@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CloudOff, RefreshCw, Loader2, CheckCheck, Trash2 } from 'lucide-react';
+import { CloudOff, RefreshCw, Loader2, CheckCheck, Trash2, List } from 'lucide-react';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
+import { PendientesSheet } from './PendientesSheet';
 import { cn } from '@/lib/utils';
 
 /**
@@ -13,6 +15,7 @@ import { cn } from '@/lib/utils';
  */
 export function OfflineIndicator() {
   const { online, cantidadPendientes, sincronizando, sincronizarAhora, descartarTodo, pendientes } = useOfflineSync();
+  const [detalleAbierto, setDetalleAbierto] = useState(false);
 
   const mostrar = !online || cantidadPendientes > 0;
   // Operaciones "trabadas" — se intentaron muchas veces y no van. Sólo entonces ofrecemos descartar.
@@ -51,13 +54,18 @@ export function OfflineIndicator() {
               )}
             </div>
 
-            <div className="flex-1 min-w-0">
+            <button
+              type="button"
+              onClick={() => cantidadPendientes > 0 && setDetalleAbierto(true)}
+              disabled={cantidadPendientes === 0}
+              className="flex-1 min-w-0 text-left disabled:cursor-default"
+            >
               {!online ? (
                 <>
                   <p className="font-semibold text-sm">Sin conexión</p>
                   <p className="text-xs opacity-85">
                     {cantidadPendientes > 0
-                      ? `${cantidadPendientes} guardado${cantidadPendientes === 1 ? '' : 's'} — se ${cantidadPendientes === 1 ? 'sube' : 'suben'} solo${cantidadPendientes === 1 ? '' : 's'} al volver la señal.`
+                      ? `${cantidadPendientes} guardado${cantidadPendientes === 1 ? '' : 's'} — tocá para ver.`
                       : 'Lo que cargues ahora se guarda y sincroniza al volver la señal.'}
                   </p>
                 </>
@@ -70,15 +78,22 @@ export function OfflineIndicator() {
                     {sincronizando
                       ? 'Sincronizando…'
                       : hayTrabadas
-                      ? 'No se pudieron enviar. Reintentá o descartá.'
-                      : 'Se sincronizan solos. Tocá para forzar.'}
+                      ? 'No se pudieron enviar. Tocá para ver detalle.'
+                      : 'Tocá para ver detalle.'}
                   </p>
                 </>
               )}
-            </div>
+            </button>
 
             {online && cantidadPendientes > 0 && (
               <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  onClick={() => setDetalleAbierto(true)}
+                  title="Ver detalle"
+                  className="px-2 h-9 rounded-md bg-muted text-muted-foreground text-xs font-medium hover:bg-primary/10 hover:text-primary transition inline-flex items-center gap-1"
+                >
+                  <List className="h-3.5 w-3.5" />
+                </button>
                 {hayTrabadas && (
                   <button
                     onClick={() => {
@@ -104,6 +119,7 @@ export function OfflineIndicator() {
           </div>
         </motion.div>
       )}
+      <PendientesSheet open={detalleAbierto} onClose={() => setDetalleAbierto(false)} />
     </AnimatePresence>
   );
 }
