@@ -16,7 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Sheet } from '@/components/ui/Sheet';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { campaniasService } from '@/services/campaniasService';
-import { extraerMensajeError } from '@/lib/apiClient';
+import { esRespuestaOffline, extraerMensajeError } from '@/lib/apiClient';
 import { formatearFecha } from '@/utils/formatters';
 import { cn } from '@/lib/utils';
 import type { Campania } from '@/types/agro';
@@ -52,9 +52,13 @@ export function CampaniasPage() {
 
   const eliminar = useMutation({
     mutationFn: (id: string) => campaniasService.eliminar(id),
-    onSuccess: () => {
+    onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ['campanias'] });
-      toast.success('Campaña eliminada');
+      if (esRespuestaOffline(data)) {
+        toast('Sin señal — se eliminará cuando vuelva la conexión', { duration: 5000 });
+      } else {
+        toast.success('Campaña eliminada');
+      }
     },
     onError: (e) => toast.error(extraerMensajeError(e)),
   });
@@ -305,9 +309,18 @@ function CampaniaSheet({
       };
       return isEdit ? campaniasService.actualizar(editing!.id, payload) : campaniasService.crear(payload);
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ['campanias'] });
-      toast.success(isEdit ? 'Campaña actualizada' : 'Campaña creada');
+      if (esRespuestaOffline(data)) {
+        toast(
+          isEdit
+            ? 'Sin señal — los cambios se guardarán cuando vuelva la conexión'
+            : 'Sin señal — la campaña se enviará cuando vuelva la conexión',
+          { duration: 5000 },
+        );
+      } else {
+        toast.success(isEdit ? 'Campaña actualizada' : 'Campaña creada');
+      }
       reset();
       onClose();
     },

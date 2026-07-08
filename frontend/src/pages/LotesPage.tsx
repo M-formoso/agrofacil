@@ -1,13 +1,12 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import useEmblaCarousel from 'embla-carousel-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
-  Plus, Pencil, Trash2, Sprout, ChevronLeft, ChevronRight, Loader2,
+  Plus, Pencil, Trash2, Sprout, Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -18,7 +17,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { lotesService } from '@/services/lotesService';
 import { establecimientosService } from '@/services/establecimientosService';
 import { extraerMensajeError } from '@/lib/apiClient';
-import { formatearHa, formatearUsd } from '@/utils/formatters';
+import { formatearHa } from '@/utils/formatters';
 import { cn } from '@/lib/utils';
 import type { Lote, Tenencia, UnidadArrendamiento } from '@/types/agro';
 
@@ -73,22 +72,6 @@ export function LotesPage() {
     onError: (e) => toast.error(extraerMensajeError(e)),
   });
 
-  const [emblaRef, emblaApi] = useEmblaCarousel({ align: 'start', containScroll: 'trimSnaps', dragFree: false });
-  const [canPrev, setCanPrev] = useState(false);
-  const [canNext, setCanNext] = useState(false);
-
-  useEffect(() => {
-    if (!emblaApi) return;
-    const onSelect = () => {
-      setCanPrev(emblaApi.canScrollPrev());
-      setCanNext(emblaApi.canScrollNext());
-    };
-    onSelect();
-    emblaApi.on('select', onSelect);
-    emblaApi.on('reInit', onSelect);
-    return () => { emblaApi.off('select', onSelect); emblaApi.off('reInit', onSelect); };
-  }, [emblaApi]);
-
   const totalSuperficie = useMemo(
     () => lotes?.items.reduce((s, l) => s + Number(l.superficieHa), 0) ?? 0,
     [lotes],
@@ -123,9 +106,9 @@ export function LotesPage() {
       </header>
 
       {isLoading ? (
-        <div className="flex gap-4 overflow-hidden">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="w-72 h-56 rounded-2xl bg-surface border border-border shimmer shrink-0" />
+            <div key={i} className="h-56 rounded-2xl bg-surface border border-border shimmer" />
           ))}
         </div>
       ) : !lotes || lotes.items.length === 0 ? (
@@ -140,42 +123,28 @@ export function LotesPage() {
           }
         />
       ) : (
-        <>
-          <div className="embla relative" ref={emblaRef}>
-            <div className="embla__container gap-4 py-1">
-              <AnimatePresence>
-                {lotes.items.map((lote, i) => (
-                  <motion.div
-                    key={lote.id}
-                    layout
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    transition={{ delay: i * 0.025 }}
-                    className="embla__slide w-[290px] sm:w-[320px]"
-                  >
-                    <LoteCard
-                      lote={lote}
-                      onEdit={() => setEditing(lote)}
-                      onDelete={() => {
-                        if (confirm(`¿Eliminar "${lote.nombre}"?`)) eliminar.mutate(lote.id);
-                      }}
-                    />
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </div>
-
-            <div className="absolute -top-12 right-0 flex gap-1">
-              <NavButton onClick={() => emblaApi?.scrollPrev()} disabled={!canPrev}>
-                <ChevronLeft className="h-4 w-4" />
-              </NavButton>
-              <NavButton onClick={() => emblaApi?.scrollNext()} disabled={!canNext}>
-                <ChevronRight className="h-4 w-4" />
-              </NavButton>
-            </div>
-          </div>
-        </>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          <AnimatePresence>
+            {lotes.items.map((lote, i) => (
+              <motion.div
+                key={lote.id}
+                layout
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ delay: i * 0.025 }}
+              >
+                <LoteCard
+                  lote={lote}
+                  onEdit={() => setEditing(lote)}
+                  onDelete={() => {
+                    if (confirm(`¿Eliminar "${lote.nombre}"?`)) eliminar.mutate(lote.id);
+                  }}
+                />
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
       )}
 
       <LoteSheet
@@ -187,21 +156,6 @@ export function LotesPage() {
         }}
       />
     </div>
-  );
-}
-
-function NavButton({ onClick, disabled, children }: { onClick: () => void; disabled: boolean; children: React.ReactNode }) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className={cn(
-        'h-8 w-8 rounded-md border border-border bg-surface inline-flex items-center justify-center transition',
-        disabled ? 'opacity-30 cursor-not-allowed' : 'hover:border-primary/40 hover:text-primary',
-      )}
-    >
-      {children}
-    </button>
   );
 }
 
@@ -474,5 +428,3 @@ function LoteSheet({
   );
 }
 
-// formatearUsd not used directly here; kept import in case future enhancement.
-void formatearUsd;

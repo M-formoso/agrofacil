@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import {
-  ArrowLeft, ChevronRight, History, Scissors, Sprout, Tractor, Wheat,
+  ArrowLeft, Beaker, ChevronRight, ClipboardList, History, Scissors, Sprout, Tractor, Wheat,
 } from 'lucide-react';
 
 import { lotesService } from '@/services/lotesService';
@@ -120,6 +120,26 @@ export function LoteDetallePage() {
             <Wheat className="h-4 w-4 text-primary" />
             <h2 className="text-sm font-bold text-foreground uppercase tracking-wide">Campaña activa</h2>
           </div>
+
+          {(rolEnCuenta === 'ingeniero' || rolEnCuenta === 'operador') && (
+            <div className="grid grid-cols-2 gap-2">
+              <Link
+                to={`/lotes-campania/${activa.id}?abrir=labor`}
+                className="inline-flex items-center justify-center gap-2 h-11 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary-hover transition shadow-sm"
+              >
+                <ClipboardList className="h-4 w-4" />
+                Cargar labor
+              </Link>
+              <Link
+                to={`/lotes-campania/${activa.id}?abrir=insumo`}
+                className="inline-flex items-center justify-center gap-2 h-11 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary-hover transition shadow-sm"
+              >
+                <Beaker className="h-4 w-4" />
+                Cargar insumo
+              </Link>
+            </div>
+          )}
+
           <Link
             to={`/lotes-campania/${activa.id}`}
             className="block rounded-2xl bg-surface border border-primary/30 p-5 hover:border-primary hover:shadow-lift transition group"

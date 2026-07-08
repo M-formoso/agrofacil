@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
@@ -59,6 +59,7 @@ const INSUMOS_TIPOS: { value: TipoInsumo; label: string }[] = [
 
 export function LoteCampaniaDetallePage() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const qc = useQueryClient();
   const [tab, setTab] = useState<'resultado' | 'labores' | 'insumos' | 'monitoreos'>('resultado');
   const [generandoReporte, setGenerandoReporte] = useState(false);
@@ -67,6 +68,18 @@ export function LoteCampaniaDetallePage() {
   const [editandoDatos, setEditandoDatos] = useState(false);
   const [editandoLabor, setEditandoLabor] = useState<Labor | null>(null);
   const [editandoInsumo, setEditandoInsumo] = useState<InsumoAplicado | null>(null);
+
+  // Atajo de entrada: /lotes-campania/:id?abrir=labor|insumo abre el sheet directo.
+  useEffect(() => {
+    const abrir = searchParams.get('abrir');
+    if (abrir === 'labor' || abrir === 'insumo') {
+      setTab(abrir === 'labor' ? 'labores' : 'insumos');
+      setCreating(abrir);
+      const next = new URLSearchParams(searchParams);
+      next.delete('abrir');
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const { data: lc, isLoading } = useQuery({
     queryKey: ['lote-campania', id],

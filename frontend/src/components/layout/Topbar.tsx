@@ -9,7 +9,7 @@ interface Props {
 
 export function Topbar({ onOpenPalette }: Props) {
   return (
-    <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-md border-b border-border lg:hidden">
+    <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-md border-b border-border lg:hidden pt-safe">
       <div className="flex items-center justify-between px-4 h-14">
         <div className="flex items-center gap-2">
           <MobileDrawer />

@@ -42,7 +42,7 @@ export const navGroups: NavGroup[] = [
     id: 'mi-campo',
     label: 'Mi campo',
     items: [
-      { to: '/establecimientos', label: 'Establecimientos', icon: Tractor, keywords: ['campo', 'finca'], modulo: 'establecimientos' },
+      { to: '/establecimientos', label: 'Empresa', icon: Tractor, keywords: ['campo', 'finca', 'establecimiento', 'empresa'], modulo: 'establecimientos' },
       { to: '/lotes',            label: 'Lotes',            icon: Sprout,  keywords: ['parcela', 'potrero'], modulo: 'lotes' },
       { to: '/campanias',        label: 'Campañas',         icon: CalendarRange, keywords: ['fina', 'gruesa'], modulo: 'campanias' },
     ],
