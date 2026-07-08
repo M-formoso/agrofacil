@@ -47,7 +47,7 @@ export function CampaniasPage() {
 
   const { data, isLoading } = useQuery({
     queryKey: ['campanias'],
-    queryFn: () => campaniasService.listar({ limit: 200 }),
+    queryFn: () => campaniasService.listar({ limit: 100 }),
   });
 
   const eliminar = useMutation({
